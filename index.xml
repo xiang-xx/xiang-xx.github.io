@@ -1,3 +1,297 @@
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Hugo Tania</title><link>https://xiang-xx.github.io/</link><description>Recent content on Hugo Tania</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><lastBuildDate>Sun, 01 Jan 2023 16:47:07 +0800</lastBuildDate><atom:link href="https://xiang-xx.github.io/index.xml" rel="self" type="application/rss+xml"/><item><title>测试</title><link>https://xiang-xx.github.io/posts/my-first-post/</link><pubDate>Sun, 01 Jan 2023 16:47:07 +0800</pubDate><guid>https://xiang-xx.github.io/posts/my-first-post/</guid><description>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Hugo Tania</title><link>https://xiang-xx.github.io/</link><description>Recent content on Hugo Tania</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><lastBuildDate>Sat, 04 Feb 2023 09:31:29 +0800</lastBuildDate><atom:link href="https://xiang-xx.github.io/index.xml" rel="self" type="application/rss+xml"/><item><title>读《计算机程序的构造和解释》</title><link>https://xiang-xx.github.io/posts/read-sicp/</link><pubDate>Sat, 04 Feb 2023 09:31:29 +0800</pubDate><guid>https://xiang-xx.github.io/posts/read-sicp/</guid><description>
+&lt;h2 id="前言">
+&lt;a href="#%e5%89%8d%e8%a8%80" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+前言
+&lt;/h2>
+&lt;p>《计算机程序的构造和解释》（Structure and Interpretation of Computer Programs、SICP），也称 SICP，是麻省理工学院（MIT）计算机科学的入门教材。书中以 Scheme 语言为例（Lisp - List Processing 语言的一种方言），通过大量代码案例，详细介绍了程序如何抽象构造出来，以及程序解释/编译/运行的基本流程。对于日常使用高级语言的工程师来说，阅读此书能够对程序底层运行过程有一定的理解。&lt;/p>
+&lt;h2 id="编程语言的抽象">
+&lt;a href="#%e7%bc%96%e7%a8%8b%e8%af%ad%e8%a8%80%e7%9a%84%e6%8a%bd%e8%b1%a1" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+编程语言的抽象
+&lt;/h2>
+&lt;p>编程语言提供一些基础元素，比如基本类型，运算符，关键字等，并使用表达式构建成语句，语句通过一系列的方式构成 复合过程（函数，方法，闭包，lambda 等）。&lt;/p>
+&lt;p>一个问题的求解过程通常可以有很多种，比如计算阶乘，可以用简单的递归算法：&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;span class="lnt">5
+&lt;/span>&lt;span class="lnt">6
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-go" data-lang="go">&lt;span class="line">&lt;span class="cl">&lt;span class="kd">func&lt;/span> &lt;span class="nf">factorial&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nx">n&lt;/span> &lt;span class="kt">int&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="kt">int&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">if&lt;/span> &lt;span class="nx">n&lt;/span> &lt;span class="o">==&lt;/span> &lt;span class="mi">1&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="mi">1&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="nx">n&lt;/span> &lt;span class="o">*&lt;/span> &lt;span class="nf">factorial&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nx">n&lt;/span>&lt;span class="o">-&lt;/span>&lt;span class="mi">1&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>此算法的计算过程：先展开，后归约，比如计算 factorial(4)，展开与规约的过程：&lt;/p>
+&lt;pre tabindex="0">&lt;code>4 * f(3)
+4 * 3 * f(2)
+4 * 3 * 2 * f(1)
+4 * 3 * 2 * 1
+4 * 3 * 2
+4 * 6
+24
+&lt;/code>&lt;/pre>&lt;p>如果使用迭代的方式计算：&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;span class="lnt">5
+&lt;/span>&lt;span class="lnt">6
+&lt;/span>&lt;span class="lnt">7
+&lt;/span>&lt;span class="lnt">8
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-go" data-lang="go">&lt;span class="line">&lt;span class="cl">&lt;span class="kd">func&lt;/span> &lt;span class="nf">factorial&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nx">n&lt;/span> &lt;span class="kt">int&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="kt">int&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">a&lt;/span> &lt;span class="o">:=&lt;/span> &lt;span class="mi">1&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">for&lt;/span> &lt;span class="nx">n&lt;/span> &lt;span class="p">&amp;gt;&lt;/span> &lt;span class="mi">0&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">a&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="nx">a&lt;/span> &lt;span class="o">*&lt;/span> &lt;span class="nx">n&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">n&lt;/span> &lt;span class="o">-=&lt;/span> &lt;span class="mi">1&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="nx">a&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>其计算过程因为没有先展开后规约的过程，所以看上去简洁很多：&lt;/p>
+&lt;pre tabindex="0">&lt;code>a = 4 n = 4
+a = 12 n = 3
+a = 24 n = 2
+a = 24 n = 1
+&lt;/code>&lt;/pre>&lt;p>书中还提到计算 n 的 k 次方的算法（k &amp;gt; 0）。最直观的解法是递归求 &lt;code>f(n, k) = n * f(n, k-1)&lt;/code>。次方问题可以根据 k 的奇偶进行划分：&lt;/p>
+&lt;pre tabindex="0">&lt;code>n 是偶数：f(n, k) = f(n*n, k/2)
+n 是奇数：f(n, k) = n * f(n, k-1)
+&lt;/code>&lt;/pre>&lt;p>根据上述公式，可以很简单的实现出递归程序，时间复杂度是 O(logk)；在不考虑尾递归优化的情况下，递归使用了额外栈空间，所以空间复杂度也是O(logk)。你可以试着把递归改成迭代形式，以降低空间复杂度。&lt;/p>
+&lt;p>Lisp 跟如今的一些高级语言一样，也把函数作为一等公民。函数可以赋值给变量，可以作为参数，可以作为返回值。&lt;/p>
+&lt;p>闭包跟普通函数的不同点在于闭包携带的执行环境。执行环境由两部分组成：用于记录环境内变量的表格，和指向外围环境的指针。任何过程在执行时都会有一个执行环境，过程中用到的变量的值，需要从执行环境中查找，如果当前执行环境没有，则向外围环境查找，直到找到，或者外围环境为 nil 为止。&lt;/p>
+&lt;p>过程的执行环境是在其创建时决定的，比如一个定义在全局的函数，他的执行环境就是全局共用的 global 环境；一个闭包在函数内创建时，会给它创建一个新的局部环境 &amp;ndash; 表格里记录局部环境的变量，指针指向创建它的函数的环境（可能是 global 或者另外一个局部环境）。&lt;/p>
+&lt;h2 id="模块化状态">
+&lt;a href="#%e6%a8%a1%e5%9d%97%e5%8c%96%e7%8a%b6%e6%80%81" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+模块化，状态
+&lt;/h2>
+&lt;p>这是一个带有状态的闭包实现：&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-GO" data-lang="GO">&lt;span class="line">&lt;span class="cl">&lt;span class="kd">func&lt;/span> &lt;span class="nf">newWithdraw&lt;/span>&lt;span class="p">()&lt;/span> &lt;span class="kd">func&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="kt">int&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="kt">int&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">amount&lt;/span> &lt;span class="o">:=&lt;/span> &lt;span class="mi">100&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="kd">func&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nx">a&lt;/span> &lt;span class="kt">int&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="kt">int&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">amount&lt;/span> &lt;span class="o">-=&lt;/span> &lt;span class="nx">a&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="nx">amount&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nx">w&lt;/span> &lt;span class="o">:=&lt;/span> &lt;span class="nf">newWithdraw&lt;/span>&lt;span class="p">()&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">println&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nf">w&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="mi">10&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">println&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nf">w&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="mi">20&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>闭包使用局部环境维护了局部状态；同时局部状态隐藏在闭包内部，实现了模块化。但这种方式会导致内部不透明，且构造出的闭包不是同一的，无法互相替代。&lt;/p>
+&lt;p>不需要任何赋值操作的设计，成为函数式程序设计，函数式程序设计没有状态修改。与之相反的是命令式程序设计。以求 n 的 k 次方的为例（Ologn 解法），使用递归函数的程序设计简单直观，不容易出错，使用迭代赋值，维护当前状态的命令式函数设计，会导致计算模型更复杂，更容易出错。&lt;/p>
+&lt;h2 id="并发的问题">
+&lt;a href="#%e5%b9%b6%e5%8f%91%e7%9a%84%e9%97%ae%e9%a2%98" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+并发的问题
+&lt;/h2>
+&lt;p>lisp 使用互斥锁 mutex 实现串行化组来规避并发问题，使用 test-and-set 判断 mutex 是否可用，test-and-set 使用处理器提供的原子指令。&lt;/p>
+&lt;p>死锁案例：两个进程同时修改若干账户的余额，修改每个账户的余额需要先获得该账户的锁，每个进程必须持有全部锁后才能修改完成，并释放锁。这种场景下，可以通过给账户唯一编号，然后按照编号顺序进行锁定，避免死锁发生。&lt;/p>
+&lt;p>某些场景无法避免死锁，比如需要先获取到 A账户的锁，根据余额情况再决定锁哪些账户。&lt;/p>
+&lt;h2 id="元循环求值器">
+&lt;a href="#%e5%85%83%e5%be%aa%e7%8e%af%e6%b1%82%e5%80%bc%e5%99%a8" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+元循环求值器
+&lt;/h2>
+&lt;p>元循环求值器是指使用自身语言实现的自身代码的求值器。以 lisp 来说，就是用 lisp 写一段程序，这段程序的输入是一段 lisp 程序，并求出这段程序的运行结果。&lt;/p>
+&lt;p>求值器的核心函数：&lt;code>eval(exp, env)&lt;/code>, exp 是程序过程，env 是执行环境。eval 返回 exp 在 env 环境下的运行结果。Lisp 语法简单，所以其元循环求值器也很简单：&lt;/p>
+&lt;ul>
+&lt;li>根据 exp 类型，分别调用子函数求值
+&lt;ul>
+&lt;li>&lt;code>eval-if(exp, env)&lt;/code>
+&lt;ul>
+&lt;li>判断 if 谓语真假，然后递归执行 if 模块或 else 模块&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>&lt;code>eval-assign&lt;/code>&lt;/li>
+&lt;li>&lt;code>eval-define&lt;/code>&lt;/li>
+&lt;li>调用子函数，则 &lt;code>eval (exp, newEnv(vars, env))&lt;/code>，使用新构造的执行环境&lt;/li>
+&lt;li>&amp;hellip;&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;p>eval 求值器表较简单，但也很低效。比如对于递归阶乘的求解时，eval 求值器每次递归调用 eval 时都需要重新分析阶乘函数的语法。&lt;/p>
+&lt;p>另一种求值方法是把语法分析和执行分离：&lt;code>(analyze (exp)) (env)&lt;/code>。&lt;code>analyze(exp)&lt;/code> 返回语法解析后的闭包，然后把环境 env 应用到闭包里。使用 analyze 对同一个过程只进行一次语法解析。&lt;/p>
+&lt;h2 id="惰性求值">
+&lt;a href="#%e6%83%b0%e6%80%a7%e6%b1%82%e5%80%bc" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+惰性求值
+&lt;/h2>
+&lt;p>我们所使用的语言里普遍支持惰性求值。比如在执行 &lt;code>if a &amp;amp;&amp;amp; f() {}&lt;/code> 时，如果 a 是 false，则 f 不再被调用，rust 语言的 Option 类有两个方法，分别是：&lt;/p>
+&lt;ul>
+&lt;li>&lt;code>unwrap_or(val)&lt;/code> 判断 Options 是否为空，为空，则返回入参 val&lt;/li>
+&lt;li>&lt;code>unwrap_or_else(fn)&lt;/code> 判断 Options 是否为空，为空，则返回闭包 fn 的执行结果
+其中 &lt;code>wrap_or_else&lt;/code> 使用的也是惰性求值的思想。&lt;/li>
+&lt;/ul>
+&lt;p>惰性求值的思想还可以用到其他场景：比如我们想要一个无穷的素数流，则可以用生成器函数，实现对下一个素数的惰性求值。&lt;/p>
+&lt;h2 id="寄存器机器的设计">
+&lt;a href="#%e5%af%84%e5%ad%98%e5%99%a8%e6%9c%ba%e5%99%a8%e7%9a%84%e8%ae%be%e8%ae%a1" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+寄存器机器的设计
+&lt;/h2>
+&lt;p>寄存器机器包含两个要点：&lt;/p>
+&lt;ul>
+&lt;li>数据通路：寄存器的操作，比如把寄存器 r0 的值赋值给 r1，或者求两个寄存器的运算结果，并赋值给另外一个寄存器&lt;/li>
+&lt;li>控制器：控制指令的执行顺序&lt;/li>
+&lt;/ul>
+&lt;p>一个包含堆栈的寄存器的基本指令：&lt;/p>
+&lt;ul>
+&lt;li>设置 label：label 定义程序语句标签，可以使用 branch/goto 指令跳转 label 对应的指令位置&lt;/li>
+&lt;li>&lt;code>assign &amp;lt;register-name&amp;gt; &amp;lt;register-name&amp;gt;&lt;/code> 把后面寄存器的值赋值给前面的寄存器内
+&lt;ul>
+&lt;li>例如：assign r0 r1&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>&lt;code>assign &amp;lt;register-name&amp;gt; &amp;lt;const&amp;gt;&lt;/code> 把常量值赋值给寄存器
+&lt;ul>
+&lt;li>例如：assign r0 1&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>&lt;code>assign &amp;lt;register-name&amp;gt; &amp;lt;operation&amp;gt;&lt;/code> 把表达式的值赋值给寄存器
+&lt;ul>
+&lt;li>例如 assign r0 (- r1 r2) 把 r1 - r2 的值赋值给 r0&lt;/li>
+&lt;li>assign r0 (&amp;gt; r1 r2) 把 r1 &amp;gt; r2 的结果赋值给 r0 寄存器&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>&lt;code>assign &amp;lt;register-name&amp;gt; &amp;lt;label&amp;gt;&lt;/code> 把 label 对应语句指令的指针赋值给寄存器
+&lt;ul>
+&lt;li>例如：assign r0 gcd 把 gcd 标签语句指针赋值给 r0 寄存器&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>&lt;code>test &amp;lt;op&amp;gt; &amp;lt;register-name&amp;gt;|&amp;lt;const&amp;gt; &amp;lt;register-name&amp;gt;|&amp;lt;const&amp;gt;&lt;/code> 用后面两个值，使用操作符 op 进行比较，并把比较结果保存到 flag 寄存器
+&lt;ul>
+&lt;li>例如：test = r0 1，判断 r0 与常数 1 是否相等&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>&lt;code>branch &amp;lt;label&amp;gt;&lt;/code> 判断 flag 的值，如果为 true，则程序跳转到 label 位置&lt;/li>
+&lt;li>&lt;code>goto label|reg&lt;/code> 直接跳转到 label 位置，或 register 存储的 label 位置
+&lt;ul>
+&lt;li>goto gcd&lt;/li>
+&lt;li>goto r0&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>&lt;code>save &amp;lt;register-name&amp;gt;&lt;/code> 把寄存器的值存入栈顶
+&lt;ul>
+&lt;li>save r0&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>&lt;code>restore &amp;lt;register-name&amp;gt;&lt;/code> 从栈顶 pop 出数据，存入寄存器
+&lt;ul>
+&lt;li>restore r0&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;p>控制器从 pc 寄存器中读取指令行，并执行对应指令；指令顺序执行，pc 寄存器的值递增；goto，branch 语句控制 pc 寄存器的值，控制程序的跳转；直到没有指令需要执行时，程序结束。&lt;/p>
+&lt;p>一段简单的寄存器指令代码：&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;span class="lnt">5
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-lisp" data-lang="lisp">&lt;span class="line">&lt;span class="cl">&lt;span class="nv">start&lt;/span> &lt;span class="c1">; 这个 label 不是必须，程序会从第一行执行 &lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">(&lt;/span>&lt;span class="nv">assign&lt;/span> &lt;span class="nv">r0&lt;/span> &lt;span class="mi">1&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">(&lt;/span>&lt;span class="nv">assign&lt;/span> &lt;span class="nv">r1&lt;/span> &lt;span class="mi">2&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">(&lt;/span>&lt;span class="nv">assign&lt;/span> &lt;span class="nv">r2&lt;/span> &lt;span class="p">(&lt;/span>&lt;span class="nf">+&lt;/span> &lt;span class="nv">r0&lt;/span> &lt;span class="nv">r1&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">(&lt;/span>&lt;span class="nf">print&lt;/span> &lt;span class="nv">r2&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>我用 go 语言实现了一个简单的寄存器模拟器，以及两个更复杂的寄存器程序案例 &lt;a href="https://github.com/xiang-xx/go-register-machine">go-register-machine&lt;/a>。&lt;/p>
+&lt;h2 id="解释器与编译器">
+&lt;a href="#%e8%a7%a3%e9%87%8a%e5%99%a8%e4%b8%8e%e7%bc%96%e8%af%91%e5%99%a8" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+解释器与编译器
+&lt;/h2>
+&lt;p>为了能够在高级语言和寄存器语言的鸿沟上架起一道桥梁，通常存在着两种策略：&lt;/p>
+&lt;ul>
+&lt;li>解释器模式&lt;/li>
+&lt;li>编译模式&lt;/li>
+&lt;/ul>
+&lt;p>解释器模式就是使用上述寄存器语言实现一个解释器，它能循环读取高级语言，并实时运行。很多解释型语言都有命令行模式，比如 nodejs，python，php 等。&lt;/p>
+&lt;p>编译器模式：可以使用任何语言实现编译器，它读取高级语言，并把它的过程翻译成寄存器语言。&lt;/p>
+&lt;p>与解释方式相比，编译方式能够大大提高程序的执行效率。另一方面，解释器则为程序的开发和排查错误提供了一个更强大的环境，因为被执行的源代码在运行期间是可用的，可以取检查和修改。&lt;/p>
+&lt;h2 id="总结">
+&lt;a href="#%e6%80%bb%e7%bb%93" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+总结
+&lt;/h2>
+&lt;p>以上只是我对书中的一些关键概念和案例做的摘要。书中还对流数据处理，非确定型计算等做了详细介绍，因为与我常用技术关联不大，所以这里没有涉及。书中对于元循环求值器，寄存器机器设计，解释器，编译器都有完整的 lisp 代码讲解，阅读这些源代码能够提升对程序执行原理的认识。&lt;/p>
+&lt;p>本书毕竟是入门教材，书中所述的垃圾回收/寄存器程序/解释器/编译器等实现方式都比较简单，以达到浅显易懂的目的。我们日常使用的高级语言，其底层设计会更加复杂。阅读此书能帮助我们打开这扇门，里面更广阔的内容还需要不断探索。&lt;/p>
+&lt;p>你可以在&lt;a href="https://awesome-programming-books.github.io/computer-system/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9E%84%E9%80%A0%E5%92%8C%E8%A7%A3%E9%87%8A%EF%BC%88%E7%AC%AC2%E7%89%88%EF%BC%89.pdf">这里下载原书的 pdf 版&lt;/a>。&lt;/p></description></item><item><title>测试</title><link>https://xiang-xx.github.io/posts/my-first-post/</link><pubDate>Sun, 01 Jan 2023 16:47:07 +0800</pubDate><guid>https://xiang-xx.github.io/posts/my-first-post/</guid><description>
 &lt;p>my first post
 测试中文&lt;/p></description></item></channel></rss>
