@@ -1,6 +1,6 @@
 baseurl: "https://xiang-xx.github.io"
-languageCode: "en-us"
-title: "Hugo Tania"
+languageCode: "zh-CN"
+title: "XX Blog"
 theme: "hugo-tania"
 paginate: 6
 
@@ -38,7 +38,7 @@ params:
     dev-to:
     email:
     facebook:
-    github:
+    github: https://github.com/xiang-xx
     instagram:
     linkedin:
     medium:
