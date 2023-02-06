@@ -1,4 +1,4 @@
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Hugo Tania</title><link>https://xiang-xx.github.io/</link><description>Recent content on Hugo Tania</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><lastBuildDate>Sat, 04 Feb 2023 09:31:29 +0800</lastBuildDate><atom:link href="https://xiang-xx.github.io/index.xml" rel="self" type="application/rss+xml"/><item><title>读《计算机程序的构造和解释》</title><link>https://xiang-xx.github.io/posts/read-sicp/</link><pubDate>Sat, 04 Feb 2023 09:31:29 +0800</pubDate><guid>https://xiang-xx.github.io/posts/read-sicp/</guid><description>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>XX Blog</title><link>https://xiang-xx.github.io/</link><description>Recent content on XX Blog</description><generator>Hugo -- gohugo.io</generator><language>zh-CN</language><lastBuildDate>Sat, 04 Feb 2023 09:31:29 +0800</lastBuildDate><atom:link href="https://xiang-xx.github.io/index.xml" rel="self" type="application/rss+xml"/><item><title>读《计算机程序的构造和解释》</title><link>https://xiang-xx.github.io/posts/read-sicp/</link><pubDate>Sat, 04 Feb 2023 09:31:29 +0800</pubDate><guid>https://xiang-xx.github.io/posts/read-sicp/</guid><description>
 &lt;h2 id="前言">
 &lt;a href="#%e5%89%8d%e8%a8%80" class="anchor">
 &lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
@@ -292,6 +292,4 @@ d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.
 &lt;/h2>
 &lt;p>以上只是我对书中的一些关键概念和案例做的摘要。书中还对流数据处理，非确定型计算等做了详细介绍，因为与我常用技术关联不大，所以这里没有涉及。书中对于元循环求值器，寄存器机器设计，解释器，编译器都有完整的 lisp 代码讲解，阅读这些源代码能够提升对程序执行原理的认识。&lt;/p>
 &lt;p>本书毕竟是入门教材，书中所述的垃圾回收/寄存器程序/解释器/编译器等实现方式都比较简单，以达到浅显易懂的目的。我们日常使用的高级语言，其底层设计会更加复杂。阅读此书能帮助我们打开这扇门，里面更广阔的内容还需要不断探索。&lt;/p>
-&lt;p>你可以在&lt;a href="https://awesome-programming-books.github.io/computer-system/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9E%84%E9%80%A0%E5%92%8C%E8%A7%A3%E9%87%8A%EF%BC%88%E7%AC%AC2%E7%89%88%EF%BC%89.pdf">这里下载原书的 pdf 版&lt;/a>。&lt;/p></description></item><item><title>测试</title><link>https://xiang-xx.github.io/posts/my-first-post/</link><pubDate>Sun, 01 Jan 2023 16:47:07 +0800</pubDate><guid>https://xiang-xx.github.io/posts/my-first-post/</guid><description>
-&lt;p>my first post
-测试中文&lt;/p></description></item></channel></rss>
+&lt;p>你可以在&lt;a href="https://awesome-programming-books.github.io/computer-system/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9E%84%E9%80%A0%E5%92%8C%E8%A7%A3%E9%87%8A%EF%BC%88%E7%AC%AC2%E7%89%88%EF%BC%89.pdf">这里下载原书的 pdf 版&lt;/a>。&lt;/p></description></item></channel></rss>
