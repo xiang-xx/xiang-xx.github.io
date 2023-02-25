@@ -8,7 +8,7 @@ series: []
 
 ## 前言
 
-《计算机程序的构造和解释》（Structure and Interpretation of Computer Programs、SICP），也称 SICP，是麻省理工学院（MIT）计算机科学的入门教材。书中以 Scheme 语言为例（Lisp - List Processing 语言的一种方言），通过大量代码案例，详细介绍了程序如何抽象构造出来，以及程序解释/编译/运行的基本流程。对于日常使用高级语言的工程师来说，阅读此书能够对程序底层运行过程有一定的理解。
+《计算机程序的构造和解释》（Structure and Interpretation of Computer Programs、SICP）[^1]，也称 SICP，是麻省理工学院（MIT）计算机科学的入门教材。书中以 Scheme 语言为例（Lisp - List Processing 语言的一种方言），通过大量代码案例，详细介绍了程序如何抽象构造出来，以及程序解释/编译/运行的基本流程。对于日常使用高级语言的工程师来说，阅读此书能够对程序底层运行过程有一定的理解。
 
 
 ## 编程语言的抽象
@@ -177,3 +177,5 @@ start  ; 这个 label 不是必须，程序会从第一行执行
 本书毕竟是入门教材，书中所述的垃圾回收/寄存器程序/解释器/编译器等实现方式都比较简单，以达到浅显易懂的目的。我们日常使用的高级语言，其底层设计会更加复杂。阅读此书能帮助我们打开这扇门，里面更广阔的内容还需要不断探索。
 
 你可以在[这里下载原书的 pdf 版](https://awesome-programming-books.github.io/computer-system/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9E%84%E9%80%A0%E5%92%8C%E8%A7%A3%E9%87%8A%EF%BC%88%E7%AC%AC2%E7%89%88%EF%BC%89.pdf)。
+
+[^1]: 《计算机程序的构造和解释》Structure and Interpretation of Computer Programs(SICP) 作者：Harold Abels，Gerald Jay Sussman， Julie Sussman
