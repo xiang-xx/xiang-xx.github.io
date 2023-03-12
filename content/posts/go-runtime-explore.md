@@ -68,7 +68,7 @@ nocgo:
 
 `schedinit` 的几个主要的初始化动作：
 - 初始化系统全局锁的 lock rank：系统层面的锁有很多，有些操作需要获取多个锁，对锁按照 rank 排序，防止死锁。
-- 设置 `sched.maxmcount = 10000`，即 `G-M-P` 模型中 `M` 的最大数量。
+- 设置 `sched.maxmcount = 10000`，即 `G-M-P` 模型中 `M` 的最大数量（超出时会 panic）
 - `mallocinit`，包含若干内存管理过程
   - `mheap_.init()` 用于初始化 `span` 分配器、`cache` 分配器及其他特殊分配器，以及初始化 136 个对应 `spanClass` 的中央缓存 `mheap.central[136]`，最后是向操作系统申请内存；这些内存分配器都是 `fixalloc` 的实例，`fixalloc` 用于固定大小对象的空闲列表分配器。
   - 使用 `cache` 分配器初始化 `mcache0`，用于初始化时候分配内存，后续会绑定到第一个 `P`
@@ -167,7 +167,7 @@ type mspan struct {
 
 此外，各级缓存都会根据栈空间大小（扩容次数），或栈的 `page` 数量（large stack），划分为不同的链表（例如类型为：`stackcache[size or page count] stackfreelist`）进行管理，方便快速找到对应大小的占空间。
 
-## 堆内存申请
+### 堆内存申请
 
 以下情况，对象的内存会被分配到堆上[^3]：
 - 内存原因：`interface{}` 动态类型，编译期无法知道内存大小；栈空间不足，比如创建一个超过系统栈空间大小的数组
@@ -189,7 +189,7 @@ type mspan struct {
 总结一下，申请无指针的小对象时有 `tinyAlloc` 优化措施，中等对象优先尝试从当前 `P.mcache` 中申请，没有则依次向全局缓存 `mheap.central mheap` 中申请，大对象直接从 `mheap` 中申请。申请过程中，如果 `P.mcache` 用尽或申请了大对象，都会触发 GC。内存的释放在 GC 过程。
 
 
-## 垃圾回收
+### 垃圾回收
 
 GC 开始的入口在 `mgc.go/gcStart(gcTrigger)`，查看此函数的所有调用可以了解到 GC 触发的场景有:
 - 堆内存申请时 `P.mcache` 用尽，或申请了大于 32kB 的对象
@@ -213,7 +213,7 @@ Go 的三色标记法的大致流程：短暂 STW，为每个 `P` 上创建一�
 并发标记能够解决垃圾回收时暂停世界时间过长的问题，Go 的垃圾回收主要在清扫阶段暂停世界。标记任务通过本地队列、全局队列进行两级存储，本地队列无锁性能高，全局队列可以平衡不同协程之间的工作量。
 
 
-## 协程创建与调度
+### 协程创建与调度
 
 `go` 关键字会在编译时转换为对 `proc.go/newproc(fn)` 的调用，它会调用 `newproc1(fn, currentG, currentCallerPc)` 创建协程，并通过 `runqput(currentP, newg, true)` 加到运行队列：
 - `runqput` 第三个参数为 true 表示会把 `newg` 加到本地 `P` 的 `next slot`，也即本地 `P` 下次调度的 `G` 就是刚创建的 `newg`（如果过程中创建了新的 `G`，则又会被新的 `G` 抢占 `next slot`）
