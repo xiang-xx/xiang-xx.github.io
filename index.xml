@@ -1,4 +1,444 @@
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>XX Blog</title><link>https://xiang-xx.github.io/</link><description>Recent content on XX Blog</description><generator>Hugo -- gohugo.io</generator><language>zh-CN</language><lastBuildDate>Wed, 01 Mar 2023 19:26:36 +0800</lastBuildDate><atom:link href="https://xiang-xx.github.io/index.xml" rel="self" type="application/rss+xml"/><item><title>Raft 协议核心内容</title><link>https://xiang-xx.github.io/posts/raft-protocol/</link><pubDate>Wed, 01 Mar 2023 19:26:36 +0800</pubDate><guid>https://xiang-xx.github.io/posts/raft-protocol/</guid><description>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>XX Blog</title><link>https://xiang-xx.github.io/</link><description>Recent content on XX Blog</description><generator>Hugo -- gohugo.io</generator><language>zh-CN</language><lastBuildDate>Sun, 05 Mar 2023 09:28:11 +0800</lastBuildDate><atom:link href="https://xiang-xx.github.io/index.xml" rel="self" type="application/rss+xml"/><item><title>Golang 运行时探究</title><link>https://xiang-xx.github.io/posts/go-runtime-explore/</link><pubDate>Sun, 05 Mar 2023 09:28:11 +0800</pubDate><guid>https://xiang-xx.github.io/posts/go-runtime-explore/</guid><description>
+&lt;blockquote>
+&lt;p>版本与原型环境：Golang: 1.19.6; WSL2 Ubuntu-20.04&lt;/p>
+&lt;/blockquote>
+&lt;p>本文尽量不放过多源码，只注明源码位置及大致逻辑，开发者还需要自己阅读源码才能对 runtime 有更深刻的体会。runtime 代码都在 &lt;a href="https://github.com/golang/go/tree/master/src/runtime">src/runtime&lt;/a> 目录下。&lt;/p>
+&lt;h2 id="启动阶段">
+&lt;a href="#%e5%90%af%e5%8a%a8%e9%98%b6%e6%ae%b5" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+启动阶段
+&lt;/h2>
+&lt;p>Debug 运行一段最简单的代码，观察一下程序刚启动后的调用堆栈：&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-go" data-lang="go">&lt;span class="line">&lt;span class="cl">&lt;span class="kd">func&lt;/span> &lt;span class="nf">main&lt;/span>&lt;span class="p">()&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">fmt&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Println&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s">&amp;#34;hello world&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="c1">// 程序停在这
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span>&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>观察程序的 Call Stack，可以发现启动了五个协程，根据调用栈可以找到这五个协程对应的入口:&lt;/p>
+&lt;ul>
+&lt;li>&lt;code>runtime.main&lt;/code>，它调用了我们定义的 main 函数，是用户程序的入口&lt;/li>
+&lt;li>&lt;code>runtime.forcegchelper&lt;/code>，gc 辅助协程，它在 proc.go 的 &lt;code>runtime.init&lt;/code> 中被调用&lt;/li>
+&lt;li>&lt;code>runtime.bgsweep&lt;/code>，gc 标记，在 &lt;code>runtime.gcenable&lt;/code> 中被启动&lt;/li>
+&lt;li>&lt;code>runtime.bgscavenge&lt;/code>，gc 清除，也在 &lt;code>runtime.gcenable&lt;/code> 中被启动；&lt;code>runtime.gcenable&lt;/code> 在 &lt;code>runtime.main&lt;/code>中被调用&lt;/li>
+&lt;li>&lt;code>runtime.runfinq&lt;/code>，它是运行所有 &lt;code>finalizers&lt;/code> 的协程，它只被启动一次，会在第一次调用 &lt;code>runtime.SetFinalizer&lt;/code> 时被启动。用户自定义的所有 Finalizer 都会在这个写成立串行执行，所以要在 Finalizer 里执行耗时操作，最好启动新的协程。&lt;/li>
+&lt;/ul>
+&lt;p>以上只是在 go 的层面观察到的启动顺序。Go 程序启动的最初入口在汇编代码层面，主要是在 &lt;code>runtime.rt0_go&lt;/code> 汇编函数中&lt;sup id="fnref:1">&lt;a href="#fn:1" class="footnote-ref" role="doc-noteref">1&lt;/a>&lt;/sup>：&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;span class="lnt">14
+&lt;/span>&lt;span class="lnt">15
+&lt;/span>&lt;span class="lnt">16
+&lt;/span>&lt;span class="lnt">17
+&lt;/span>&lt;span class="lnt">18
+&lt;/span>&lt;span class="lnt">19
+&lt;/span>&lt;span class="lnt">20
+&lt;/span>&lt;span class="lnt">21
+&lt;/span>&lt;span class="lnt">22
+&lt;/span>&lt;span class="lnt">23
+&lt;/span>&lt;span class="lnt">24
+&lt;/span>&lt;span class="lnt">25
+&lt;/span>&lt;span class="lnt">26
+&lt;/span>&lt;span class="lnt">27
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-s" data-lang="s">&lt;span class="line">&lt;span class="cl">&lt;span class="n">TEXT&lt;/span> &lt;span class="n">runtime&lt;/span>·&lt;span class="nf">rt0_go&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">SB&lt;/span>&lt;span class="p">),&lt;/span>&lt;span class="n">NOSPLIT&lt;/span>&lt;span class="o">|&lt;/span>&lt;span class="n">TOPFRAME&lt;/span>&lt;span class="p">,&lt;/span>&lt;span class="o">$&lt;/span>&lt;span class="m">0&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="o">//&lt;/span> &lt;span class="kc">...&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">nocgo&lt;/span>&lt;span class="o">:&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="o">//&lt;/span> 创建 &lt;span class="n">m0&lt;/span> 和 &lt;span class="n">g0&lt;/span> 并相互引用
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="o">//&lt;/span> &lt;span class="n">save&lt;/span> &lt;span class="n">m&lt;/span>&lt;span class="o">-&amp;gt;&lt;/span>&lt;span class="n">g0&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">g0&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">MOVD&lt;/span> &lt;span class="n">g&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="nf">m_g0&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">R0&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="o">//&lt;/span> &lt;span class="n">save&lt;/span> &lt;span class="n">m0&lt;/span> &lt;span class="n">to&lt;/span> &lt;span class="n">g0&lt;/span>&lt;span class="o">-&amp;gt;&lt;/span>&lt;span class="n">m&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">MOVD&lt;/span> &lt;span class="n">R0&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="nf">g_m&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">g&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="o">//&lt;/span> 初始化：执行文件路径，内存页大小
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">BL&lt;/span> &lt;span class="n">runtime&lt;/span>·&lt;span class="nf">args&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">SB&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="o">//&lt;/span> &lt;span class="n">runtime1.go&lt;/span>&lt;span class="o">/&lt;/span>&lt;span class="n">args&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="o">//&lt;/span> &lt;span class="n">CPU&lt;/span> 个数，大页内存页大小
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">BL&lt;/span> &lt;span class="n">runtime&lt;/span>·&lt;span class="nf">osinit&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">SB&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="o">//&lt;/span> &lt;span class="n">os_linux.go&lt;/span>&lt;span class="o">/&lt;/span>&lt;span class="n">osinit&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="o">//&lt;/span> 命令行参数、环境变量、&lt;span class="n">gc&lt;/span>、栈空间、内存管理、所有&lt;span class="n">P&lt;/span>实例、&lt;span class="n">HASH&lt;/span>算法等
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">BL&lt;/span> &lt;span class="n">runtime&lt;/span>·&lt;span class="nf">schedinit&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">SB&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="o">//&lt;/span> &lt;span class="n">proc.go&lt;/span>&lt;span class="o">/&lt;/span>&lt;span class="n">schedinit&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="o">//&lt;/span> &lt;span class="n">create&lt;/span> &lt;span class="n">a&lt;/span> &lt;span class="n">new&lt;/span> &lt;span class="n">goroutine&lt;/span> &lt;span class="n">to&lt;/span> &lt;span class="n">start&lt;/span> &lt;span class="n">program&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="o">//&lt;/span> 创建一个新的 &lt;span class="n">goroutine&lt;/span>，绑定 &lt;span class="n">runtime.main&lt;/span>，放在 &lt;span class="n">P&lt;/span> 本地队列，等待调度
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">MOVD&lt;/span> &lt;span class="o">$&lt;/span>&lt;span class="n">runtime&lt;/span>·&lt;span class="nf">mainPC&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">SB&lt;/span>&lt;span class="p">),&lt;/span> &lt;span class="n">R0&lt;/span> &lt;span class="o">//&lt;/span> &lt;span class="n">entry&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">SUB&lt;/span> &lt;span class="o">$&lt;/span>&lt;span class="m">16&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">RSP&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">MOVD&lt;/span> &lt;span class="n">R0&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="m">8&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">RSP&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="o">//&lt;/span> &lt;span class="n">arg&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">MOVD&lt;/span> &lt;span class="o">$&lt;/span>&lt;span class="m">0&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="m">0&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">RSP&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="o">//&lt;/span> &lt;span class="n">dummy&lt;/span> &lt;span class="n">LR&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">BL&lt;/span> &lt;span class="n">runtime&lt;/span>·&lt;span class="nf">newproc&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">SB&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">ADD&lt;/span> &lt;span class="o">$&lt;/span>&lt;span class="m">16&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">RSP&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="o">//&lt;/span> 启动 &lt;span class="n">M&lt;/span>，开始调度 &lt;span class="n">goroutine&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">BL&lt;/span> &lt;span class="n">runtime&lt;/span>·&lt;span class="nf">mstart&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">SB&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>初始化过程做了很多事情，包括对于 android、ios 以及其他窗口应用的一些前置逻辑。用 &lt;code>schedinit&lt;/code> 函数的注释说，启动顺序是：&lt;/p>
+&lt;ul>
+&lt;li>call osinit&lt;/li>
+&lt;li>call schedinit&lt;/li>
+&lt;li>make &amp;amp; queue new G, The new G calls runtime·main.&lt;/li>
+&lt;li>call runtime.mstart&lt;/li>
+&lt;/ul>
+&lt;p>我们主要关注 &lt;code>schedinit&lt;/code> 和 &lt;code>runtime.main&lt;/code>。&lt;/p>
+&lt;p>&lt;code>schedinit&lt;/code> 的几个主要的初始化动作：&lt;/p>
+&lt;ul>
+&lt;li>初始化系统全局锁的 lock rank：系统层面的锁有很多，有些操作需要获取多个锁，对锁按照 rank 排序，防止死锁。&lt;/li>
+&lt;li>设置 &lt;code>sched.maxmcount = 10000&lt;/code>，即 &lt;code>G-M-P&lt;/code> 模型中 &lt;code>M&lt;/code> 的最大数量。&lt;/li>
+&lt;li>&lt;code>mallocinit&lt;/code>，包含若干内存管理过程
+&lt;ul>
+&lt;li>&lt;code>mheap_.init()&lt;/code> 用于初始化 &lt;code>span&lt;/code> 分配器、&lt;code>cache&lt;/code> 分配器及其他特殊分配器，以及初始化 136 个对应 &lt;code>spanClass&lt;/code> 的中央缓存 &lt;code>mheap.central[136]&lt;/code>，最后是向操作系统申请内存；这些内存分配器都是 &lt;code>fixalloc&lt;/code> 的实例，&lt;code>fixalloc&lt;/code> 用于固定大小对象的空闲列表分配器。&lt;/li>
+&lt;li>使用 &lt;code>cache&lt;/code> 分配器初始化 &lt;code>mcache0&lt;/code>，用于初始化时候分配内存，后续会绑定到第一个 &lt;code>P&lt;/code>&lt;/li>
+&lt;li>初始化 &lt;code>mheap_.arenaHints&lt;/code>，用于设置申请更多 &lt;code>heap areanas&lt;/code> 后的地址（go runtime 定义的内存地址）&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>&lt;code>cpuinit&lt;/code> 读取 &lt;code>GODEBUG&lt;/code> 环境变量并初始化 cpu 信息&lt;/li>
+&lt;li>&lt;code>alginit&lt;/code> 随机初始化 &lt;code>hash&lt;/code> 算法种子&lt;/li>
+&lt;li>&lt;code>fastrandinit&lt;/code> 初始化随机算法种子&lt;/li>
+&lt;li>&lt;code>modulesinit&lt;/code> 从所有加载的 &lt;code>module&lt;/code> 中创建 &lt;code>activeModules&lt;/code> 切片&lt;/li>
+&lt;li>&lt;code>typelinksinit&lt;/code> 加载 &lt;code>activeModules&lt;/code> 定义的类型&lt;/li>
+&lt;li>&lt;code>goargs&lt;/code> 初始化命令行 &lt;code>args&lt;/code>&lt;/li>
+&lt;li>&lt;code>goenv&lt;/code> 初始化 &lt;code>env&lt;/code>&lt;/li>
+&lt;li>&lt;code>gcinit&lt;/code> 初始化 &lt;code>gc work&lt;/code> 状态，以及对应锁的 &lt;code>rank&lt;/code>&lt;/li>
+&lt;li>&lt;code>procresize&lt;/code> 设置 &lt;code>P&lt;/code> 的数量，创建 &lt;code>P&lt;/code> 并初始化 &lt;code>P&lt;/code>（如果 &lt;code>P&lt;/code> 数量变少，则销毁对应数量的 &lt;code>P&lt;/code>），第一个创建的 &lt;code>P&lt;/code> 的 &lt;code>P.mcache = mcache0&lt;/code>，后续的 &lt;code>P.mcache = allocmcache()&lt;/code>，即从 &lt;code>mheap&lt;/code> 中申请新的 &lt;code>mcache&lt;/code>；给当前 &lt;code>g.m&lt;/code> 绑定一个 P；&lt;code>mcache0 = nil&lt;/code> 全局 &lt;code>mcache0&lt;/code> 不再持有该内存指针；&lt;code>p.m.set(mget())&lt;/code> 尝试给 &lt;code>P&lt;/code> 绑定一个 &lt;code>M&lt;/code>；&lt;/li>
+&lt;li>&lt;code>worldStarted&lt;/code> &lt;code>P&lt;/code> 可以运行了&lt;/li>
+&lt;/ul>
+&lt;p>&lt;code>runtime.main&lt;/code> 的主要流程：&lt;/p>
+&lt;ul>
+&lt;li>设置最大栈空间大小：64 位系统 1GB，32 位系统 250M，&lt;/li>
+&lt;li>创建 &lt;code>sysmon&lt;/code> 线程，辅助垃圾清扫，协程调度&lt;/li>
+&lt;li>&lt;code>doInit(runtime_inittask)&lt;/code> 调用 &lt;code>runtime init&lt;/code> 函数&lt;/li>
+&lt;li>&lt;code>gcenable&lt;/code> 启动 gc 协程 &lt;code>bgsweep&lt;/code> &lt;code>bgscavenge&lt;/code>&lt;/li>
+&lt;li>&lt;code>doInit(main_inittask)&lt;/code> 调用用户程序 &lt;code>init&lt;/code> 函数&lt;/li>
+&lt;li>&lt;code>fn := main_main; fn()&lt;/code> 调用 &lt;code>main&lt;/code> 函数&lt;/li>
+&lt;li>&lt;code>main&lt;/code> 函数返回后，函数退出&lt;/li>
+&lt;/ul>
+&lt;p>总的来说，初始化阶段可以分为两部分，第一部分是系统环境初始化：系统锁顺序、内存分配器、堆内存、最初的 &lt;code>mcache0&lt;/code>、&lt;code>hash&lt;/code> 与 随机算法、环境参数、&lt;code>process&lt;/code> 等，第二部分是运行环境初始化：运行环境所需的 &lt;code>sysmon&lt;/code> 线程（不绑定 &lt;code>P&lt;/code>，不在 &lt;code>G-M-P&lt;/code> 模型内调度）、垃圾标记与清扫协程、&lt;code>runtime&lt;/code> 与用户程序的 &lt;code>init&lt;/code>，以及最后启动 &lt;code>main&lt;/code> 函数。&lt;/p>
+&lt;h2 id="运行阶段">
+&lt;a href="#%e8%bf%90%e8%a1%8c%e9%98%b6%e6%ae%b5" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+运行阶段
+&lt;/h2>
+&lt;h3 id="内存模型">
+&lt;a href="#%e5%86%85%e5%ad%98%e6%a8%a1%e5%9e%8b" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+内存模型
+&lt;/h3>
+&lt;p>Go 使用 &lt;code>mheap&lt;/code> 管理所有堆内存。向操作系统申请的最小内存单元是 &lt;code>page&lt;/code>，go 程序每次向操作系统申请若干 &lt;code>page&lt;/code>，并使用 &lt;code>heapArena&lt;/code> 管理 &lt;code>mheap&lt;/code> 中 &lt;code>page&lt;/code> 的状态。从 &lt;code>mheap&lt;/code> 中申请内存的最小单位是 &lt;code>mspan&lt;/code>，它由若干 &lt;code>page&lt;/code> 组成。&lt;/p>
+&lt;p>&lt;code>mspan&lt;/code> 根据存储的单个 &lt;code>object&lt;/code> 的内存大小划分为不同的 &lt;code>spanClass&lt;/code>，比如有的用于存储小对象，有的用于储存较大的对象；这种划分划分方式既能提高可用内存的查找效率，又能提高空间利用率，避免过多空间碎片。&lt;/p>
+&lt;p>每个 &lt;code>mspan&lt;/code> 都在一个双向链表中，可能是 &lt;code>mheap&lt;/code> 的 &lt;code>busy list&lt;/code>，或者是某个 &lt;code>mcentral&lt;/code> 的 &lt;code>span list&lt;/code>。&lt;/p>
+&lt;p>一些关键对象字段：&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;span class="lnt">14
+&lt;/span>&lt;span class="lnt">15
+&lt;/span>&lt;span class="lnt">16
+&lt;/span>&lt;span class="lnt">17
+&lt;/span>&lt;span class="lnt">18
+&lt;/span>&lt;span class="lnt">19
+&lt;/span>&lt;span class="lnt">20
+&lt;/span>&lt;span class="lnt">21
+&lt;/span>&lt;span class="lnt">22
+&lt;/span>&lt;span class="lnt">23
+&lt;/span>&lt;span class="lnt">24
+&lt;/span>&lt;span class="lnt">25
+&lt;/span>&lt;span class="lnt">26
+&lt;/span>&lt;span class="lnt">27
+&lt;/span>&lt;span class="lnt">28
+&lt;/span>&lt;span class="lnt">29
+&lt;/span>&lt;span class="lnt">30
+&lt;/span>&lt;span class="lnt">31
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-go" data-lang="go">&lt;span class="line">&lt;span class="cl">&lt;span class="kd">type&lt;/span> &lt;span class="nx">mheap&lt;/span> &lt;span class="kd">struct&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">pages&lt;/span> &lt;span class="nx">pageAlloc&lt;/span> &lt;span class="c1">// page allocation data structure
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span> &lt;span class="nx">allspans&lt;/span> &lt;span class="p">[]&lt;/span>&lt;span class="o">*&lt;/span>&lt;span class="nx">mspan&lt;/span> &lt;span class="c1">// all spans out there
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span> &lt;span class="nx">arenas&lt;/span> &lt;span class="p">[&lt;/span>&lt;span class="mi">1&lt;/span> &lt;span class="o">&amp;lt;&amp;lt;&lt;/span> &lt;span class="nx">arenaL1Bits&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="o">*&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="mi">1&lt;/span> &lt;span class="o">&amp;lt;&amp;lt;&lt;/span> &lt;span class="nx">arenaL2Bits&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="o">*&lt;/span>&lt;span class="nx">heapArena&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1">// 中心缓存
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span> &lt;span class="nx">central&lt;/span> &lt;span class="p">[&lt;/span>&lt;span class="nx">numSpanClasses&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="kd">struct&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">mcentral&lt;/span> &lt;span class="nx">mcentral&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">pad&lt;/span> &lt;span class="p">[&lt;/span>&lt;span class="nx">cpu&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nx">CacheLinePadSize&lt;/span> &lt;span class="o">-&lt;/span> &lt;span class="nx">unsafe&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nf">Sizeof&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nx">mcentral&lt;/span>&lt;span class="p">{})&lt;/span>&lt;span class="o">%&lt;/span>&lt;span class="nx">cpu&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="nx">CacheLinePadSize&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="kt">byte&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1">// ...
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span>&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kd">type&lt;/span> &lt;span class="nx">mcentral&lt;/span> &lt;span class="kd">struct&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">spanclass&lt;/span> &lt;span class="nx">spanClass&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">partial&lt;/span> &lt;span class="p">[&lt;/span>&lt;span class="mi">2&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="nx">spanSet&lt;/span> &lt;span class="c1">// list of spans with a free object
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span> &lt;span class="nx">full&lt;/span> &lt;span class="p">[&lt;/span>&lt;span class="mi">2&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="nx">spanSet&lt;/span> &lt;span class="c1">// list of spans with no free objects
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span> &lt;span class="c1">// ...
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span>&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kd">var&lt;/span> &lt;span class="nx">mheap_&lt;/span> &lt;span class="nx">mheap&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kd">type&lt;/span> &lt;span class="nx">mspan&lt;/span> &lt;span class="kd">struct&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">next&lt;/span> &lt;span class="o">*&lt;/span>&lt;span class="nx">mspan&lt;/span> &lt;span class="c1">// next span in list, or nil if none
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span> &lt;span class="nx">prev&lt;/span> &lt;span class="o">*&lt;/span>&lt;span class="nx">mspan&lt;/span> &lt;span class="c1">// previous span in list, or nil if none
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span> &lt;span class="nx">list&lt;/span> &lt;span class="o">*&lt;/span>&lt;span class="nx">mSpanList&lt;/span> &lt;span class="c1">// For debugging. TODO: Remove.
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span> &lt;span class="nx">startAddr&lt;/span> &lt;span class="kt">uintptr&lt;/span> &lt;span class="c1">// address of first byte of span aka s.base()
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span> &lt;span class="nx">npages&lt;/span> &lt;span class="kt">uintptr&lt;/span> &lt;span class="c1">// number of pages in span
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span> &lt;span class="nx">freeindex&lt;/span> &lt;span class="kt">uintptr&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">nelems&lt;/span> &lt;span class="kt">uintptr&lt;/span> &lt;span class="c1">// number of object in the span.
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span> &lt;span class="c1">// ...
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span>&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h3 id="栈空间管理">
+&lt;a href="#%e6%a0%88%e7%a9%ba%e9%97%b4%e7%ae%a1%e7%90%86" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+栈空间管理
+&lt;/h3>
+&lt;p>每个 &lt;code>G&lt;/code> 有自己的栈空间。调用 &lt;code>proc.go/newproc()&lt;/code> 创建新的协程，程序会尝试从本地 &lt;code>P.gFree&lt;/code> 和全局 &lt;code>sched.gFree&lt;/code> 获取一个 &lt;code>dead G&lt;/code>（被回收的 &lt;code>G&lt;/code>），则直接复用它的栈。如果没有 &lt;code>dead G&lt;/code>，则调用 &lt;code>malg(stackMin)&lt;/code> 创建一个拥有最小栈空间 2048 的 &lt;code>G&lt;/code>。&lt;/p>
+&lt;p>编译器会为函数调用插入 &lt;code>runtime.morestack&lt;/code> 检查，如果栈空间不足，需要扩容，则会调用 &lt;code>runtime.newstack&lt;/code> 扩容。&lt;code>newsize := oldsize * 2&lt;/code>，每次容量增加一倍；程序会检查 &lt;code>newsize&lt;/code> 是否符合新栈空间要求，如果不够，继续增大 &lt;code>newsize&lt;/code>。调用 &lt;code>copystack(gp *g, newsize uintptr)&lt;/code> 申请新的栈空间，并复制栈内容，把新栈指针设置到 &lt;code>g&lt;/code>，&lt;code>stackfree(old)&lt;/code> 回收旧栈。&lt;/p>
+&lt;p>&lt;code>stack.go/stackalloc(n uint32)&lt;/code> 用于申请新的栈内存，主要逻辑为：&lt;/p>
+&lt;ul>
+&lt;li>如果 GODEBUG 设置 efence != 0，或 stackFromSystem !=0，则直接从系统内存中申请一段内存&lt;/li>
+&lt;li>如果 n 小于 &lt;code>_StackCacheSize = 32768&lt;/code>，且小于 &lt;code>_FixedStack&amp;lt;&amp;lt;_NumStackOrders&lt;/code>（随系统变化），则尝试从本地或去全局 &lt;code>stack&lt;/code> 缓存获取：
+&lt;ul>
+&lt;li>如果当前 g.m 没有 p，或 p 不使用 &lt;code>stackcache&lt;/code>，则调用 &lt;code>stackpoolalloc&lt;/code> 从全局 &lt;code>stackpool&lt;/code> 中获取，&lt;code>stackpool&lt;/code> 没有可用缓存时，调用 &lt;code>mheap._allocManual&lt;/code> 从 &lt;code>mheap&lt;/code> 中申请。&lt;/li>
+&lt;li>否则，从当前 P 的 &lt;code>mcache.stackcache&lt;/code> 申请，如果 &lt;code>mcache.stackcache&lt;/code> 为空，则调用 &lt;code>stackpoolalloc&lt;/code> 从全局 &lt;code>stackpool&lt;/code> 获取，直到 &lt;code>mcache.stackcache&lt;/code> 填充一半（&lt;code>size &amp;gt;= _StackCacheSize/2&lt;/code>）&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>先尝试从全局 &lt;code>stackLarge&lt;/code> 缓存中获取，如果没有，则直接从 mheap 中调用 &lt;code>mheap_.allocManual&lt;/code> 申请包含若干 &lt;code>page&lt;/code> 的 &lt;code>span&lt;/code>。&lt;/li>
+&lt;/ul>
+&lt;p>在 gc 扫描栈的过程中，可能发生栈缩容，栈缩容与扩容类似，计算目标栈空间大小，调用 &lt;code>copystack(gp *g, newsize uintptr)&lt;/code> 申请新的栈空间，并复制栈内容，把新栈指针设置到 g，&lt;code>stackfree(old)&lt;/code> 回收旧栈。&lt;/p>
+&lt;p>&lt;code>stackfree&lt;/code> 的逻辑与 &lt;code>stackalloc&lt;/code> 类似：&lt;/p>
+&lt;ul>
+&lt;li>若 n 小于 &lt;code>_StackCacheSize = 32768&lt;/code>，且小于 &lt;code>_FixedStack&amp;lt;&amp;lt;_NumStackOrders&lt;/code>，则尝试回收到全局 &lt;code>stackpool&lt;/code> 或者 &lt;code>p.mcache.stackcache&lt;/code>，回收过程也会根据各级缓存是否已满，则回收到上级缓存，直到最后回收到 &lt;code>mheap&lt;/code>
+&lt;ul>
+&lt;li>只有在 &lt;code>_GCoff&lt;/code> 阶段才能向 &lt;code>mheap&lt;/code> 直接回收栈空间&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>若 n 比较大，则根据 GC 阶段判断回收到哪里：
+&lt;ul>
+&lt;li>&lt;code>gcphase == _GCoff&lt;/code>：GC 没有运行，后台清扫中，没有开启写屏障，则直接回收到 &lt;code>mheap&lt;/code>&lt;/li>
+&lt;li>GC 运行时，为了避免 &lt;code>span&lt;/code> 回收到 &lt;code>mheap&lt;/code> 后，又被申请用作堆 &lt;code>span&lt;/code>，可能与 gc 发生冲突，所以直接回收到 &lt;code>stackLarge&lt;/code> 缓存。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;p>总结一下，较小的栈存在两级缓存：本地 &lt;code>P&lt;/code> 缓存 &lt;code>P.mcache.stackcache&lt;/code>、全局 &lt;code>stackpool&lt;/code>；大的栈空间存在一级缓存：&lt;code>stackLarge&lt;/code>；申请缓存时根据条件分别尝试从各级缓存中申请，从全局或 mheap 申请/释放时否需要加锁，所以会优先尝试本地 &lt;code>P.mcache.stackcache&lt;/code>。释放缓存时，避免在 GC 时，栈 &lt;code>span&lt;/code> 回收到 &lt;code>mheap&lt;/code> 后又被申请为堆 &lt;code>span&lt;/code>，导致状态冲突，所以 GC 时不能向 &lt;code>mheap&lt;/code> 回收栈内存，最多只回收到全局栈缓存。&lt;/p>
+&lt;p>此外，各级缓存都会根据栈空间大小（扩容次数），或栈的 &lt;code>page&lt;/code> 数量（large stack），划分为不同的链表（例如类型为：&lt;code>stackcache[size or page count] stackfreelist&lt;/code>）进行管理，方便快速找到对应大小的占空间。&lt;/p>
+&lt;h2 id="堆内存申请">
+&lt;a href="#%e5%a0%86%e5%86%85%e5%ad%98%e7%94%b3%e8%af%b7" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+堆内存申请
+&lt;/h2>
+&lt;p>以下情况，对象的内存会被分配到堆上[^3]：&lt;/p>
+&lt;ul>
+&lt;li>内存原因：&lt;code>interface{}&lt;/code> 动态类型，编译期无法知道内存大小；栈空间不足，比如创建一个超过系统栈空间大小的数组&lt;/li>
+&lt;li>作用域原因：闭包或协程访问外部作用域；函数内创建的指针返回到外部；指针被堆上的对象引用&lt;/li>
+&lt;/ul>
+&lt;p>堆内存申请的入口在 &lt;code>malloc.go/mallocgc(size uintptr, typ *_type, needzero bool)&lt;/code>，根据此函数注释可以了解到：&lt;/p>
+&lt;ul>
+&lt;li>小对象从本地 &lt;code>P&lt;/code> 的缓存中申请&lt;/li>
+&lt;li>大对象（&amp;gt; 32kB）直接从 &lt;code>mheap&lt;/code> 中申请&lt;/li>
+&lt;/ul>
+&lt;p>内存申请的主要逻辑为：&lt;/p>
+&lt;ul>
+&lt;li>如果申请内存大小 &lt;code>size&lt;/code> 为 0，则直接返回一个固定的 &lt;code>zeroAddr&lt;/code>&lt;/li>
+&lt;li>获取当前线程 m 的乐观锁，&lt;code>m.mallocing = 1&lt;/code>&lt;/li>
+&lt;li>如果类型 typ 内没有指针，且小于 &lt;code>maxTinySize&lt;/code> 16 字节，则尝试从当前 &lt;code>P.mcache&lt;/code> 的 &lt;code>tinyAllocs&lt;/code> 申请内存（&lt;code>tinyAllocs&lt;/code> 内存申请只需要计算在 tiny 缓存区的偏移量，性能很高）；没有 tiny 缓存，则依次尝试向 &lt;code>mcache.alloc[tinySpanclass]&lt;/code> 及其上级缓存申请&lt;/li>
+&lt;li>如果 &lt;code>size &amp;lt;= maxSmallSize&lt;/code> 32kB，则计算 size 对应的 &lt;code>spanClass&lt;/code>，并一次尝试向 &lt;code>mcache.alloc[tinySpanclass]&lt;/code> 及其上级缓存申请，具体逻辑为：
+&lt;ul>
+&lt;li>先调用 &lt;code>span = c.alloc[spanClass]; v = nextFreeFast(span)&lt;/code> 从 span 双向链表的当前 span 节点中，使用 &lt;code>allocCache&lt;/code> 标志位快速查找是否存在未使用的缓存，如果有，则直接用此缓存&lt;/li>
+&lt;li>否则，调用本地缓存 &lt;code>mcache.nextFree(spanClass)&lt;/code>，此方法先尝试从 &lt;code>span.freeIndex&lt;/code> 之后查找可用缓存，如果没有，说明 span 已满；则调用 &lt;code>mcache.refill(spanClass)&lt;/code> 从全局缓存 &lt;code>mheap.central[spanClass]&lt;/code> 中申请一块有剩余缓存的 span，并调用新 &lt;code>span.nextFreeIndex&lt;/code> 得到内存指针。如果需要从全局缓存获取，则 &lt;code>shouldhelpgc&lt;/code> 设置为 true，后续会触发 GC。&lt;code>central[spanClass]&lt;/code> 用尽时，会调用 &lt;code>mheap_.alloc(npages, spanclass)&lt;/code> 从 mheap 中申请一个有 &lt;code>npages pages&lt;/code> 的 &lt;code>span&lt;/code>（span 根据 spanClass 有不同的大小，多个 pages 组成一个 span）。&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>如果 &lt;code>size &amp;gt; maxSmallSize&lt;/code> 32kB，则通过 &lt;code>mcache.allocLarge&lt;/code> 方法，调用 &lt;code>mheap_.alloc(npages, spanclass)&lt;/code> 直接向 &lt;code>mheap&lt;/code> 中申请若干 &lt;code>pages&lt;/code>，组成 &lt;code>span&lt;/code> 并返回。&lt;code>shouldhelpgc&lt;/code> 设置为 &lt;code>true&lt;/code>，后续会触发 GC。&lt;/li>
+&lt;/ul>
+&lt;p>总结一下，申请无指针的小对象时有 &lt;code>tinyAlloc&lt;/code> 优化措施，中等对象优先尝试从当前 &lt;code>P.mcache&lt;/code> 中申请，没有则依次向全局缓存 &lt;code>mheap.central mheap&lt;/code> 中申请，大对象直接从 &lt;code>mheap&lt;/code> 中申请。申请过程中，如果 &lt;code>P.mcache&lt;/code> 用尽或申请了大对象，都会触发 GC。内存的释放在 GC 过程。&lt;/p>
+&lt;h2 id="垃圾回收">
+&lt;a href="#%e5%9e%83%e5%9c%be%e5%9b%9e%e6%94%b6" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+垃圾回收
+&lt;/h2>
+&lt;p>GC 开始的入口在 &lt;code>mgc.go/gcStart(gcTrigger)&lt;/code>，查看此函数的所有调用可以了解到 GC 触发的场景有:&lt;/p>
+&lt;ul>
+&lt;li>堆内存申请时 &lt;code>P.mcache&lt;/code> 用尽，或申请了大于 32kB 的对象&lt;/li>
+&lt;li>用户程序调用 &lt;code>runtime.GC()&lt;/code>&lt;/li>
+&lt;li>&lt;code>forcegchelper&lt;/code> 协程定时触发 GC&lt;/li>
+&lt;/ul>
+&lt;p>Go 的三色标记法的大致流程：短暂 STW，为每个 &lt;code>P&lt;/code> 上创建一个 &lt;code>G&lt;/code>，用于垃圾回收的标记阶段；标记阶段完成后，触发清扫阶段，清扫阶段需要 STW。标记阶段采用三色标记法：&lt;strong>先把所有的根对象标记为灰色并放到任务队列，然后持续从任务队列取出灰色对象，并标记为黑色，把它的指针指向的对象标记为灰色，入工作队列，持续此过程直到工作队列为空&lt;/strong>；为了防止标记协程与用户协程出现并发问题，使用混合写屏障[^4]将被覆盖的对象标记成灰色，并在当前栈没有扫描时将新对象也标记成灰色；在 &lt;code>mallocgc&lt;/code> 函数里，把新创建的对象标记为黑色。&lt;/p>
+&lt;p>垃圾回收入口 &lt;code>gcStart&lt;/code> 的主要流程：&lt;/p>
+&lt;ul>
+&lt;li>启动与 &lt;code>P&lt;/code> 数量相同的协程用于并发标记，每个 &lt;code>P&lt;/code> 上跑一个标记协程 &lt;code>gcBgMarkWorker&lt;/code>&lt;/li>
+&lt;li>&lt;code>stopTheWorldWithSema&lt;/code> 暂停世界&lt;/li>
+&lt;li>处理一些 GC 前置的工作，例如 GC、CPU 限制，GC 状态修改，初始化堆标记 work（标记的工作队列），标记 &lt;code>TinyObjects&lt;/code> 等&lt;/li>
+&lt;li>&lt;code>startTheWorldWithSema&lt;/code> 继续调度协程，&lt;code>gcBgMarkWorker&lt;/code> 被调度后会进行标记动作&lt;/li>
+&lt;/ul>
+&lt;p>标记协程 &lt;code>gcBgMarkWorker&lt;/code> 流程：&lt;/p>
+&lt;ul>
+&lt;li>通过 &lt;code>gcController.findRunnableGCWorker&lt;/code> 被唤醒调度&lt;/li>
+&lt;li>调用 &lt;code>gcDrain&lt;/code>，先扫所有根对象 &lt;code>nDataRoots, nBSSRoots, nSpanRoots, nStackRoots&lt;/code>，然后循环调用 &lt;code>scanobject&lt;/code> 标记工作队列里的对象；工作队列分为本地工作队列 &lt;code>P.gcw&lt;/code> 和全局工作队列，标记过程中会对本地和全局工作队列进行平衡，比如本地队列满了，则会拿出一部分放到全局队列&lt;/li>
+&lt;li>检测到标记结束后，会调用 &lt;code>gcMarkDone&lt;/code>，暂停世界，并调用 &lt;code>gcMarkTermination -&amp;gt; gcSweep -&amp;gt; sweepone&lt;/code> 进行清扫，最后通过调用 &lt;code>mheap.freeSpan(span)&lt;/code> 把空 &lt;code>span&lt;/code> 放回堆里；&lt;code>sweep&lt;/code> 结束后，唤醒 &lt;code>scavenger&lt;/code>，把空余内存和不使用的页还给操作系统&lt;/li>
+&lt;li>启动世界，继续调度&lt;/li>
+&lt;/ul>
+&lt;p>并发标记能够解决垃圾回收时暂停世界时间过长的问题，Go 的垃圾回收主要在清扫阶段暂停世界。标记任务通过本地队列、全局队列进行两级存储，本地队列无锁性能高，全局队列可以平衡不同协程之间的工作量。&lt;/p>
+&lt;h2 id="协程创建与调度">
+&lt;a href="#%e5%8d%8f%e7%a8%8b%e5%88%9b%e5%bb%ba%e4%b8%8e%e8%b0%83%e5%ba%a6" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+协程创建与调度
+&lt;/h2>
+&lt;p>&lt;code>go&lt;/code> 关键字会在编译时转换为对 &lt;code>proc.go/newproc(fn)&lt;/code> 的调用，它会调用 &lt;code>newproc1(fn, currentG, currentCallerPc)&lt;/code> 创建协程，并通过 &lt;code>runqput(currentP, newg, true)&lt;/code> 加到运行队列：&lt;/p>
+&lt;ul>
+&lt;li>&lt;code>runqput&lt;/code> 第三个参数为 true 表示会把 &lt;code>newg&lt;/code> 加到本地 &lt;code>P&lt;/code> 的 &lt;code>next slot&lt;/code>，也即本地 &lt;code>P&lt;/code> 下次调度的 &lt;code>G&lt;/code> 就是刚创建的 &lt;code>newg&lt;/code>（如果过程中创建了新的 &lt;code>G&lt;/code>，则又会被新的 &lt;code>G&lt;/code> 抢占 &lt;code>next slot&lt;/code>）&lt;/li>
+&lt;li>&lt;code>runqput&lt;/code> 先尝试把 &lt;code>G&lt;/code> 加到容量为 256 的本地队列（无锁），如果本地队列已满，则把 &lt;code>newg&lt;/code> 和本地队列的一半 &lt;code>G&lt;/code> 放到全局队列&lt;/li>
+&lt;/ul>
+&lt;p>&lt;code>newproc1&lt;/code> 创建协程的主要流程：&lt;/p>
+&lt;ul>
+&lt;li>调用 &lt;code>gfget&lt;/code> 尝试从 &lt;code>P&lt;/code> 本地 &lt;code>freelist&lt;/code> 获取一个被回收的 &lt;code>G&lt;/code>，本地如果没有，则从全局 &lt;code>freelist&lt;/code> 获取 32 个 &lt;code>G&lt;/code> 到本地；得到 &lt;code>G&lt;/code> 后会判断是否有栈，没有的话会调用 &lt;code>stackalloc&lt;/code> 申请栈空间&lt;/li>
+&lt;li>如果 &lt;code>freelist&lt;/code> 没有可用 &lt;code>G&lt;/code>，则调用 &lt;code>malg&lt;/code> 创建新的 &lt;code>G&lt;/code>，并申请栈空间&lt;/li>
+&lt;li>设置栈指针 &lt;code>SP&lt;/code>&lt;/li>
+&lt;li>设置 &lt;code>sched.pc&lt;/code> 为 &lt;code>goexit&lt;/code>，这样每个协程最后退出时都会执行 &lt;code>goexit&lt;/code>&lt;/li>
+&lt;li>设置 &lt;code>startpc&lt;/code> 为用户协程函数 &lt;code>fn&lt;/code>&lt;/li>
+&lt;li>修改 &lt;code>G&lt;/code> 的状态为 &lt;code>_Grunnable&lt;/code>&lt;/li>
+&lt;/ul>
+&lt;p>触发调度的场景有很多，调度的最终入口都在 &lt;code>proc.go/schedule()&lt;/code>。触发调度的情况有：&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>主动挂起&lt;/strong>：&lt;code>gopark&lt;/code> -&amp;gt; &lt;code>park_m&lt;/code>，状态修改为 &lt;code>_Gwaiting&lt;/code>，通常发生在 &lt;code>channel&lt;/code> 阻塞，等待 &lt;code>time&lt;/code>、&lt;code>netpoll&lt;/code> 等；&lt;code>pack_m&lt;/code> 会把 &lt;code>G-M&lt;/code> 解绑，并等待调用 &lt;code>goready&lt;/code> 后，修改为 &lt;code>_Grunnable&lt;/code> 并调用 &lt;code>runqput&lt;/code> 加入到运行队列&lt;/li>
+&lt;li>&lt;strong>系统调用&lt;/strong>：&lt;code>cgocall&lt;/code> -&amp;gt; &lt;code>entersyscall/exitsyscall&lt;/code>，系统调用开始与退出。&lt;code>entersyscall&lt;/code> 进入系统调用，保存 &lt;code>SP/PC&lt;/code>，&lt;code>M-P&lt;/code> 解绑并记录 &lt;code>P&lt;/code> 为 &lt;code>m.oldp&lt;/code>，状态修改为 &lt;code>_Gsyscall&lt;/code>，P 的状态也为 &lt;code>_Psyscall&lt;/code>；&lt;code>exitsyscall&lt;/code> 已退出系统调用，状态修改为 &lt;code>_Grunnable&lt;/code>，并把 &lt;code>G&lt;/code> 加入到 &lt;code>oldp&lt;/code> 运行队列&lt;/li>
+&lt;li>&lt;strong>协作式调度&lt;/strong>：&lt;code>GC&lt;/code> 阶段，信号触发，以及用户程序都可以调用 &lt;code>Gosched&lt;/code>&lt;/li>
+&lt;li>&lt;strong>系统监控&lt;/strong>：&lt;code>sysmon&lt;/code> -&amp;gt; &lt;code>retake&lt;/code>，如果当前 &lt;code>G&lt;/code> 已运行（或 &lt;code>P&lt;/code> 陷入系统调用）超过 10ms，则调用 &lt;code>preemptone&lt;/code> 通过信号 &lt;code>sigPreempt&lt;/code> 发送抢占请求&lt;/li>
+&lt;/ul>
+&lt;p>&lt;code>schedule&lt;/code> 先调用 &lt;code>findRunable&lt;/code> 找到一个等待运行的 &lt;code>G&lt;/code>，然后调用 &lt;code>execute&lt;/code> 执行它。&lt;/p>
+&lt;p>&lt;code>findRunable&lt;/code> 查找一个可运行 &lt;code>G&lt;/code> 的顺序：&lt;/p>
+&lt;ul>
+&lt;li>以 1/61 的概率从全局待运行队列里查找一个&lt;/li>
+&lt;li>从 &lt;code>P&lt;/code> 的本地 &lt;code>runq&lt;/code> 中查找&lt;/li>
+&lt;li>本地没有，则从全局 &lt;code>runq&lt;/code> 中查找，并拿一部分 &lt;code>G&lt;/code> 到本地&lt;/li>
+&lt;li>调用 &lt;code>netpoll&lt;/code> 从网络轮询器中查找是否有就绪的 &lt;code>G&lt;/code>&lt;/li>
+&lt;li>从其他 &lt;code>P&lt;/code> 中偷取&lt;/li>
+&lt;li>会再次尝试全局队列及网络轮询器&lt;/li>
+&lt;li>重复上述过程，直到找到一个就绪的 &lt;code>G&lt;/code>&lt;/li>
+&lt;/ul>
+&lt;p>&lt;code>execute&lt;/code> 会把当前 &lt;code>G-M&lt;/code> 解绑，把要运行的 &lt;code>G&lt;/code> 与 &lt;code>M&lt;/code> 绑定，最后调用 &lt;code>gogo(&amp;amp;g.sched)&lt;/code> 恢复 &lt;code>G&lt;/code> 的执行上下文，并继续执行。&lt;/p>
+&lt;p>此流程里并没有把当前的 &lt;code>G&lt;/code> 重新入待运行队列的操作，因为 P 的本地队列是一个 &lt;code>[256]uintptr&lt;/code> 数组，以及两个指针 &lt;code>head tail&lt;/code>，当前 &lt;code>G&lt;/code> 本身就处于 &lt;code>head&lt;/code> 和 &lt;code>tail&lt;/code> 之间。&lt;code>P&lt;/code> 中关于 &lt;code>G&lt;/code> 的一些字段如下：&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-go" data-lang="go">&lt;span class="line">&lt;span class="cl">&lt;span class="kd">type&lt;/span> &lt;span class="nx">p&lt;/span> &lt;span class="kd">struct&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1">//...
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span> &lt;span class="nx">runqhead&lt;/span> &lt;span class="kt">uint32&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">runqtail&lt;/span> &lt;span class="kt">uint32&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">runq&lt;/span> &lt;span class="p">[&lt;/span>&lt;span class="mi">256&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="nx">guintptr&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">runnext&lt;/span> &lt;span class="nx">guintptr&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1">// Available G&amp;#39;s (status == Gdead)
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">&lt;/span> &lt;span class="nx">gFree&lt;/span> &lt;span class="kd">struct&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">gList&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nx">n&lt;/span> &lt;span class="kt">int32&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Go 协程退出时会调用汇编程序里的 &lt;code>goexit&lt;/code>，最终调用 &lt;code>goexit0(g)&lt;/code> 来结束协程。它把 &lt;code>G&lt;/code> 的状态设置为 &lt;code>_Gdead&lt;/code>，并回收 &lt;code>G&lt;/code> 的资源，最后触发调度。回收资源包括：&lt;/p>
+&lt;ul>
+&lt;li>把栈加入到 &lt;code>GC&lt;/code> 扫描栈，用于释放栈引用的堆内存；&lt;/li>
+&lt;li>解绑 &lt;code>M&lt;/code>；&lt;/li>
+&lt;li>如果栈空间大于初始的 2kB，回收整个栈；&lt;/li>
+&lt;li>把 &lt;code>G&lt;/code> 加入到本地 &lt;code>P.gFree&lt;/code>，如果 &lt;code>P.gFree.number &amp;gt; 64&lt;/code>，则把一半的 &lt;code>dead G&lt;/code> 加入到全局 &lt;code>gFree&lt;/code>&lt;/li>
+&lt;/ul>
+&lt;h2 id="总结">
+&lt;a href="#%e6%80%bb%e7%bb%93" class="anchor">
+&lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
+&lt;path fill-rule="evenodd"
+d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z">
+&lt;/path>
+&lt;/svg>
+&lt;/a>
+总结
+&lt;/h2>
+&lt;p>Go 运行时初始化阶段进行了运行环境读取（操作系统内核数、页大小、环境变量、参数等）及一些初始化工作（各种内存分配器初始化、随机/hash 算法初始化，&lt;code>P&lt;/code> 及应用程序的 init 函数）。&lt;/p>
+&lt;p>Go 的垃圾回收经过多个版本的迭代，已经非常成熟，通过在各个 P 上并发标记，大大减少了 STW 的时间。&lt;/p>
+&lt;p>运行时的设计充分体现了多级缓存的思想：堆、栈内存的分配设立了本地/全局缓存，堆对象的内存申请也很多对象大小进行分级，使用 &lt;code>spanClass&lt;/code> 把对象进行分类，不仅加快分配速度，还减少了空间碎片；协程调度、协程创建与回收，也使用本地/全局缓存，降低锁争用的发生。这种多级缓存、按类分配的思想能给我们在做系统设计时提供启发。&lt;/p>
+&lt;p>[^2] draveness Go 语言设计与实现，栈扩容 &lt;a href="https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-stack-management/#%E6%A0%88%E6%89%A9%E5%AE%B9">https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-stack-management/#%E6%A0%88%E6%89%A9%E5%AE%B9&lt;/a>&lt;/p>
+&lt;p>[^3] 极客兔兔 Go 语言高性能编程，内存逃逸 &lt;a href="https://geektutu.com/post/hpg-escape-analysis.html">https://geektutu.com/post/hpg-escape-analysis.html&lt;/a>&lt;/p>
+&lt;p>[^4] draveness Go 语言设计与实现，混合写屏障 &lt;a href="https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-garbage-collector/#%E6%B7%B7%E5%90%88%E5%86%99%E5%B1%8F%E9%9A%9C">https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-garbage-collector/#%E6%B7%B7%E5%90%88%E5%86%99%E5%B1%8F%E9%9A%9C&lt;/a>&lt;/p>
+&lt;div class="footnotes" role="doc-endnotes">
+&lt;hr>
+&lt;ol>
+&lt;li id="fn:1">
+&lt;p>探索 golang 启动过程 &lt;a href="https://cbsheng.github.io/posts/%E6%8E%A2%E7%B4%A2golang%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8%E8%BF%87%E7%A8%8B/">https://cbsheng.github.io/posts/%E6%8E%A2%E7%B4%A2golang%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8%E8%BF%87%E7%A8%8B/&lt;/a>&amp;#160;&lt;a href="#fnref:1" class="footnote-backref" role="doc-backlink">&amp;#x21a9;&amp;#xfe0e;&lt;/a>&lt;/p>
+&lt;/li>
+&lt;/ol>
+&lt;/div></description></item><item><title>Raft 协议核心内容</title><link>https://xiang-xx.github.io/posts/raft-protocol/</link><pubDate>Wed, 01 Mar 2023 19:26:36 +0800</pubDate><guid>https://xiang-xx.github.io/posts/raft-protocol/</guid><description>
 &lt;h2 id="关于-raft">
 &lt;a href="#%e5%85%b3%e4%ba%8e-raft" class="anchor">
 &lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
