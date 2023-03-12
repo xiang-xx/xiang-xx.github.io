@@ -136,7 +136,7 @@ Leader 只会通过计数本任期 term 下产生的 entry 的备份数量，来
 
 为了避免 **leader 已提交但未响应 client 后崩溃，client 重新请求新 leader 节点会导致命令多次执行**，每个 command 需要带一个唯一标识，新 leader 包含所有已提交 entry，遇到相同的唯一标识的 command，直接返回已执行即可。
 
-[^1]: https://raft.github.io/raft.pdf Diego Ongaro and John Ousterhout Stanford University
+[^1]: [Diego Ongaro and John Ousterhout Stanford University](https://raft.github.io/raft.pdf)
 
-[^2]: http://thesecretlivesofdata.com/raft/ Raft: Understandable Distributed Consensus
+[^2]: [Raft: Understandable Distributed Consensus](http://thesecretlivesofdata.com/raft/)
 

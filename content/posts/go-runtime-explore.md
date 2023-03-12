@@ -280,10 +280,10 @@ Go 的垃圾回收经过多个版本的迭代，已经非常成熟，通过在�
 
 
 
-[^1]: 探索 golang 启动过程 https://cbsheng.github.io/posts/%E6%8E%A2%E7%B4%A2golang%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8%E8%BF%87%E7%A8%8B/
+[^1]: [探索 golang 启动过程](https://cbsheng.github.io/posts/%E6%8E%A2%E7%B4%A2golang%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8%E8%BF%87%E7%A8%8B/)
 
-[^2]: draveness Go 语言设计与实现，栈扩容 https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-stack-management/#%E6%A0%88%E6%89%A9%E5%AE%B9
+[^2]: [draveness Go 语言设计与实现，栈扩容](https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-stack-management/#%E6%A0%88%E6%89%A9%E5%AE%B9)
 
-[^3]: 极客兔兔 Go 语言高性能编程，内存逃逸 https://geektutu.com/post/hpg-escape-analysis.html
+[^3]: [极客兔兔 Go 语言高性能编程，内存逃逸](https://geektutu.com/post/hpg-escape-analysis.html)
 
-[^4]: draveness Go 语言设计与实现，混合写屏障 https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-garbage-collector/#%E6%B7%B7%E5%90%88%E5%86%99%E5%B1%8F%E9%9A%9C
+[^4]: [draveness Go 语言设计与实现，混合写屏障](https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-garbage-collector/#%E6%B7%B7%E5%90%88%E5%86%99%E5%B1%8F%E9%9A%9C)

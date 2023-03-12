@@ -413,8 +413,8 @@ Reducer：MapReduce 框架拉取由 Map 生成的键值对，收集属于同一�
 做正确的事情：预测性分析可能存在的偏见与歧视，推荐系统的责任问题，反馈循环功能。隐私与追踪需要符合法律法规，防止用户数据滥用，允许用户选择是否同意上传个人数据等。
 
 
-[^1]: 《Designing Data-Intensive Applications》Martin Kleppmann. 中文翻译 http://ddia.vonng.com/ 冯若航 （@Vonng）
+[^1]: 《Designing Data-Intensive Applications》Martin Kleppmann. [中文翻译 冯若航 @Vonng](http://ddia.vonng.com/)
 
-[^2]: 分形树 https://en.wikipedia.org/wiki/Fractal_tree_index
+[^2]: [分形树](https://en.wikipedia.org/wiki/Fractal_tree_index)
 
-[^3]: raft 协议动画演示 http://thesecretlivesofdata.com/raft/
+[^3]: [raft 协议动画演示](http://thesecretlivesofdata.com/raft/)
