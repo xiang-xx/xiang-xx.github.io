@@ -239,7 +239,7 @@ d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.
 栈空间管理
 &lt;/h3>
 &lt;p>每个 &lt;code>G&lt;/code> 有自己的栈空间。调用 &lt;code>proc.go/newproc()&lt;/code> 创建新的协程，程序会尝试从本地 &lt;code>P.gFree&lt;/code> 和全局 &lt;code>sched.gFree&lt;/code> 获取一个 &lt;code>dead G&lt;/code>（被回收的 &lt;code>G&lt;/code>），则直接复用它的栈。如果没有 &lt;code>dead G&lt;/code>，则调用 &lt;code>malg(stackMin)&lt;/code> 创建一个拥有最小栈空间 2048 的 &lt;code>G&lt;/code>。&lt;/p>
-&lt;p>编译器会为函数调用插入 &lt;code>runtime.morestack&lt;/code> 检查，如果栈空间不足，需要扩容，则会调用 &lt;code>runtime.newstack&lt;/code> 扩容。&lt;code>newsize := oldsize * 2&lt;/code>，每次容量增加一倍；程序会检查 &lt;code>newsize&lt;/code> 是否符合新栈空间要求，如果不够，继续增大 &lt;code>newsize&lt;/code>。调用 &lt;code>copystack(gp *g, newsize uintptr)&lt;/code> 申请新的栈空间，并复制栈内容，把新栈指针设置到 &lt;code>g&lt;/code>，&lt;code>stackfree(old)&lt;/code> 回收旧栈。&lt;/p>
+&lt;p>编译器会为函数调用插入 &lt;code>runtime.morestack&lt;/code> 检查，如果栈空间不足，需要扩容&lt;sup id="fnref:2">&lt;a href="#fn:2" class="footnote-ref" role="doc-noteref">2&lt;/a>&lt;/sup>，则会调用 &lt;code>runtime.newstack&lt;/code> 扩容。&lt;code>newsize := oldsize * 2&lt;/code>，每次容量增加一倍；程序会检查 &lt;code>newsize&lt;/code> 是否符合新栈空间要求，如果不够，继续增大 &lt;code>newsize&lt;/code>。调用 &lt;code>copystack(gp *g, newsize uintptr)&lt;/code> 申请新的栈空间，并复制栈内容，把新栈指针设置到 &lt;code>g&lt;/code>，&lt;code>stackfree(old)&lt;/code> 回收旧栈。&lt;/p>
 &lt;p>&lt;code>stack.go/stackalloc(n uint32)&lt;/code> 用于申请新的栈内存，主要逻辑为：&lt;/p>
 &lt;ul>
 &lt;li>如果 GODEBUG 设置 efence != 0，或 stackFromSystem !=0，则直接从系统内存中申请一段内存&lt;/li>
@@ -278,7 +278,7 @@ d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.
 &lt;/a>
 堆内存申请
 &lt;/h3>
-&lt;p>以下情况，对象的内存会被分配到堆上[^3]：&lt;/p>
+&lt;p>以下情况，对象的内存会被分配到堆上 &lt;sup id="fnref:3">&lt;a href="#fn:3" class="footnote-ref" role="doc-noteref">3&lt;/a>&lt;/sup>：&lt;/p>
 &lt;ul>
 &lt;li>内存原因：&lt;code>interface{}&lt;/code> 动态类型，编译期无法知道内存大小；栈空间不足，比如创建一个超过系统栈空间大小的数组&lt;/li>
 &lt;li>作用域原因：闭包或协程访问外部作用域；函数内创建的指针返回到外部；指针被堆上的对象引用&lt;/li>
@@ -318,7 +318,7 @@ d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.
 &lt;li>用户程序调用 &lt;code>runtime.GC()&lt;/code>&lt;/li>
 &lt;li>&lt;code>forcegchelper&lt;/code> 协程定时触发 GC&lt;/li>
 &lt;/ul>
-&lt;p>Go 的三色标记法的大致流程：短暂 STW，为每个 &lt;code>P&lt;/code> 上创建一个 &lt;code>G&lt;/code>，用于垃圾回收的标记阶段；标记阶段完成后，触发清扫阶段，清扫阶段需要 STW。标记阶段采用三色标记法：&lt;strong>先把所有的根对象标记为灰色并放到任务队列，然后持续从任务队列取出灰色对象，并标记为黑色，把它的指针指向的对象标记为灰色，入工作队列，持续此过程直到工作队列为空&lt;/strong>；为了防止标记协程与用户协程出现并发问题，使用混合写屏障[^4]将被覆盖的对象标记成灰色，并在当前栈没有扫描时将新对象也标记成灰色；在 &lt;code>mallocgc&lt;/code> 函数里，把新创建的对象标记为黑色。&lt;/p>
+&lt;p>Go 的三色标记法的大致流程：短暂 STW，为每个 &lt;code>P&lt;/code> 上创建一个 &lt;code>G&lt;/code>，用于垃圾回收的标记阶段；标记阶段完成后，触发清扫阶段，清扫阶段需要 STW。标记阶段采用三色标记法：&lt;strong>先把所有的根对象标记为灰色并放到任务队列，然后持续从任务队列取出灰色对象，并标记为黑色，把它的指针指向的对象标记为灰色，入工作队列，持续此过程直到工作队列为空&lt;/strong>；为了防止标记协程与用户协程出现并发问题，使用混合写屏障&lt;sup id="fnref:4">&lt;a href="#fn:4" class="footnote-ref" role="doc-noteref">4&lt;/a>&lt;/sup>将被覆盖的对象标记成灰色，并在当前栈没有扫描时将新对象也标记成灰色；在 &lt;code>mallocgc&lt;/code> 函数里，把新创建的对象标记为黑色。&lt;/p>
 &lt;p>垃圾回收入口 &lt;code>gcStart&lt;/code> 的主要流程：&lt;/p>
 &lt;ul>
 &lt;li>启动与 &lt;code>P&lt;/code> 数量相同的协程用于并发标记，每个 &lt;code>P&lt;/code> 上跑一个标记协程 &lt;code>gcBgMarkWorker&lt;/code>&lt;/li>
@@ -428,14 +428,20 @@ d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.
 &lt;p>Go 运行时初始化阶段进行了运行环境读取（操作系统内核数、页大小、环境变量、参数等）及一些初始化工作（各种内存分配器初始化、随机/hash 算法初始化，&lt;code>P&lt;/code> 及应用程序的 init 函数）。&lt;/p>
 &lt;p>Go 的垃圾回收经过多个版本的迭代，已经非常成熟，通过在各个 P 上并发标记，大大减少了 STW 的时间。&lt;/p>
 &lt;p>运行时的设计充分体现了多级缓存的思想：堆、栈内存的分配设立了本地/全局缓存，堆对象的内存申请也很多对象大小进行分级，使用 &lt;code>spanClass&lt;/code> 把对象进行分类，不仅加快分配速度，还减少了空间碎片；协程调度、协程创建与回收，也使用本地/全局缓存，降低锁争用的发生。这种多级缓存、按类分配的思想能给我们在做系统设计时提供启发。&lt;/p>
-&lt;p>[^2] draveness Go 语言设计与实现，栈扩容 &lt;a href="https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-stack-management/#%E6%A0%88%E6%89%A9%E5%AE%B9">https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-stack-management/#%E6%A0%88%E6%89%A9%E5%AE%B9&lt;/a>&lt;/p>
-&lt;p>[^3] 极客兔兔 Go 语言高性能编程，内存逃逸 &lt;a href="https://geektutu.com/post/hpg-escape-analysis.html">https://geektutu.com/post/hpg-escape-analysis.html&lt;/a>&lt;/p>
-&lt;p>[^4] draveness Go 语言设计与实现，混合写屏障 &lt;a href="https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-garbage-collector/#%E6%B7%B7%E5%90%88%E5%86%99%E5%B1%8F%E9%9A%9C">https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-garbage-collector/#%E6%B7%B7%E5%90%88%E5%86%99%E5%B1%8F%E9%9A%9C&lt;/a>&lt;/p>
 &lt;div class="footnotes" role="doc-endnotes">
 &lt;hr>
 &lt;ol>
 &lt;li id="fn:1">
 &lt;p>探索 golang 启动过程 &lt;a href="https://cbsheng.github.io/posts/%E6%8E%A2%E7%B4%A2golang%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8%E8%BF%87%E7%A8%8B/">https://cbsheng.github.io/posts/%E6%8E%A2%E7%B4%A2golang%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8%E8%BF%87%E7%A8%8B/&lt;/a>&amp;#160;&lt;a href="#fnref:1" class="footnote-backref" role="doc-backlink">&amp;#x21a9;&amp;#xfe0e;&lt;/a>&lt;/p>
+&lt;/li>
+&lt;li id="fn:2">
+&lt;p>draveness Go 语言设计与实现，栈扩容 &lt;a href="https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-stack-management/#%E6%A0%88%E6%89%A9%E5%AE%B9">https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-stack-management/#%E6%A0%88%E6%89%A9%E5%AE%B9&lt;/a>&amp;#160;&lt;a href="#fnref:2" class="footnote-backref" role="doc-backlink">&amp;#x21a9;&amp;#xfe0e;&lt;/a>&lt;/p>
+&lt;/li>
+&lt;li id="fn:3">
+&lt;p>极客兔兔 Go 语言高性能编程，内存逃逸 &lt;a href="https://geektutu.com/post/hpg-escape-analysis.html">https://geektutu.com/post/hpg-escape-analysis.html&lt;/a>&amp;#160;&lt;a href="#fnref:3" class="footnote-backref" role="doc-backlink">&amp;#x21a9;&amp;#xfe0e;&lt;/a>&lt;/p>
+&lt;/li>
+&lt;li id="fn:4">
+&lt;p>draveness Go 语言设计与实现，混合写屏障 &lt;a href="https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-garbage-collector/#%E6%B7%B7%E5%90%88%E5%86%99%E5%B1%8F%E9%9A%9C">https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-garbage-collector/#%E6%B7%B7%E5%90%88%E5%86%99%E5%B1%8F%E9%9A%9C&lt;/a>&amp;#160;&lt;a href="#fnref:4" class="footnote-backref" role="doc-backlink">&amp;#x21a9;&amp;#xfe0e;&lt;/a>&lt;/p>
 &lt;/li>
 &lt;/ol>
 &lt;/div></description></item><item><title>Raft 协议核心内容</title><link>https://xiang-xx.github.io/posts/raft-protocol/</link><pubDate>Wed, 01 Mar 2023 19:26:36 +0800</pubDate><guid>https://xiang-xx.github.io/posts/raft-protocol/</guid><description>
