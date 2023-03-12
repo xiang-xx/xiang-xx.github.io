@@ -106,7 +106,7 @@ d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.
 &lt;p>&lt;code>schedinit&lt;/code> 的几个主要的初始化动作：&lt;/p>
 &lt;ul>
 &lt;li>初始化系统全局锁的 lock rank：系统层面的锁有很多，有些操作需要获取多个锁，对锁按照 rank 排序，防止死锁。&lt;/li>
-&lt;li>设置 &lt;code>sched.maxmcount = 10000&lt;/code>，即 &lt;code>G-M-P&lt;/code> 模型中 &lt;code>M&lt;/code> 的最大数量。&lt;/li>
+&lt;li>设置 &lt;code>sched.maxmcount = 10000&lt;/code>，即 &lt;code>G-M-P&lt;/code> 模型中 &lt;code>M&lt;/code> 的最大数量（超出时会 panic）&lt;/li>
 &lt;li>&lt;code>mallocinit&lt;/code>，包含若干内存管理过程
 &lt;ul>
 &lt;li>&lt;code>mheap_.init()&lt;/code> 用于初始化 &lt;code>span&lt;/code> 分配器、&lt;code>cache&lt;/code> 分配器及其他特殊分配器，以及初始化 136 个对应 &lt;code>spanClass&lt;/code> 的中央缓存 &lt;code>mheap.central[136]&lt;/code>，最后是向操作系统申请内存；这些内存分配器都是 &lt;code>fixalloc&lt;/code> 的实例，&lt;code>fixalloc&lt;/code> 用于固定大小对象的空闲列表分配器。&lt;/li>
@@ -268,7 +268,7 @@ d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.
 &lt;/ul>
 &lt;p>总结一下，较小的栈存在两级缓存：本地 &lt;code>P&lt;/code> 缓存 &lt;code>P.mcache.stackcache&lt;/code>、全局 &lt;code>stackpool&lt;/code>；大的栈空间存在一级缓存：&lt;code>stackLarge&lt;/code>；申请缓存时根据条件分别尝试从各级缓存中申请，从全局或 mheap 申请/释放时否需要加锁，所以会优先尝试本地 &lt;code>P.mcache.stackcache&lt;/code>。释放缓存时，避免在 GC 时，栈 &lt;code>span&lt;/code> 回收到 &lt;code>mheap&lt;/code> 后又被申请为堆 &lt;code>span&lt;/code>，导致状态冲突，所以 GC 时不能向 &lt;code>mheap&lt;/code> 回收栈内存，最多只回收到全局栈缓存。&lt;/p>
 &lt;p>此外，各级缓存都会根据栈空间大小（扩容次数），或栈的 &lt;code>page&lt;/code> 数量（large stack），划分为不同的链表（例如类型为：&lt;code>stackcache[size or page count] stackfreelist&lt;/code>）进行管理，方便快速找到对应大小的占空间。&lt;/p>
-&lt;h2 id="堆内存申请">
+&lt;h3 id="堆内存申请">
 &lt;a href="#%e5%a0%86%e5%86%85%e5%ad%98%e7%94%b3%e8%af%b7" class="anchor">
 &lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
 &lt;path fill-rule="evenodd"
@@ -277,7 +277,7 @@ d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.
 &lt;/svg>
 &lt;/a>
 堆内存申请
-&lt;/h2>
+&lt;/h3>
 &lt;p>以下情况，对象的内存会被分配到堆上[^3]：&lt;/p>
 &lt;ul>
 &lt;li>内存原因：&lt;code>interface{}&lt;/code> 动态类型，编译期无法知道内存大小；栈空间不足，比如创建一个超过系统栈空间大小的数组&lt;/li>
@@ -302,7 +302,7 @@ d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.
 &lt;li>如果 &lt;code>size &amp;gt; maxSmallSize&lt;/code> 32kB，则通过 &lt;code>mcache.allocLarge&lt;/code> 方法，调用 &lt;code>mheap_.alloc(npages, spanclass)&lt;/code> 直接向 &lt;code>mheap&lt;/code> 中申请若干 &lt;code>pages&lt;/code>，组成 &lt;code>span&lt;/code> 并返回。&lt;code>shouldhelpgc&lt;/code> 设置为 &lt;code>true&lt;/code>，后续会触发 GC。&lt;/li>
 &lt;/ul>
 &lt;p>总结一下，申请无指针的小对象时有 &lt;code>tinyAlloc&lt;/code> 优化措施，中等对象优先尝试从当前 &lt;code>P.mcache&lt;/code> 中申请，没有则依次向全局缓存 &lt;code>mheap.central mheap&lt;/code> 中申请，大对象直接从 &lt;code>mheap&lt;/code> 中申请。申请过程中，如果 &lt;code>P.mcache&lt;/code> 用尽或申请了大对象，都会触发 GC。内存的释放在 GC 过程。&lt;/p>
-&lt;h2 id="垃圾回收">
+&lt;h3 id="垃圾回收">
 &lt;a href="#%e5%9e%83%e5%9c%be%e5%9b%9e%e6%94%b6" class="anchor">
 &lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
 &lt;path fill-rule="evenodd"
@@ -311,7 +311,7 @@ d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.
 &lt;/svg>
 &lt;/a>
 垃圾回收
-&lt;/h2>
+&lt;/h3>
 &lt;p>GC 开始的入口在 &lt;code>mgc.go/gcStart(gcTrigger)&lt;/code>，查看此函数的所有调用可以了解到 GC 触发的场景有:&lt;/p>
 &lt;ul>
 &lt;li>堆内存申请时 &lt;code>P.mcache&lt;/code> 用尽，或申请了大于 32kB 的对象&lt;/li>
@@ -334,7 +334,7 @@ d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.
 &lt;li>启动世界，继续调度&lt;/li>
 &lt;/ul>
 &lt;p>并发标记能够解决垃圾回收时暂停世界时间过长的问题，Go 的垃圾回收主要在清扫阶段暂停世界。标记任务通过本地队列、全局队列进行两级存储，本地队列无锁性能高，全局队列可以平衡不同协程之间的工作量。&lt;/p>
-&lt;h2 id="协程创建与调度">
+&lt;h3 id="协程创建与调度">
 &lt;a href="#%e5%8d%8f%e7%a8%8b%e5%88%9b%e5%bb%ba%e4%b8%8e%e8%b0%83%e5%ba%a6" class="anchor">
 &lt;svg class="icon" aria-hidden="true" focusable="false" height="16" version="1.1" viewBox="0 0 16 16" width="16">
 &lt;path fill-rule="evenodd"
@@ -343,7 +343,7 @@ d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.
 &lt;/svg>
 &lt;/a>
 协程创建与调度
-&lt;/h2>
+&lt;/h3>
 &lt;p>&lt;code>go&lt;/code> 关键字会在编译时转换为对 &lt;code>proc.go/newproc(fn)&lt;/code> 的调用，它会调用 &lt;code>newproc1(fn, currentG, currentCallerPc)&lt;/code> 创建协程，并通过 &lt;code>runqput(currentP, newg, true)&lt;/code> 加到运行队列：&lt;/p>
 &lt;ul>
 &lt;li>&lt;code>runqput&lt;/code> 第三个参数为 true 表示会把 &lt;code>newg&lt;/code> 加到本地 &lt;code>P&lt;/code> 的 &lt;code>next slot&lt;/code>，也即本地 &lt;code>P&lt;/code> 下次调度的 &lt;code>G&lt;/code> 就是刚创建的 &lt;code>newg&lt;/code>（如果过程中创建了新的 &lt;code>G&lt;/code>，则又会被新的 &lt;code>G&lt;/code> 抢占 &lt;code>next slot&lt;/code>）&lt;/li>
