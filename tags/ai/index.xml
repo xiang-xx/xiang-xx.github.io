@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>AI on XX Blog</title><link>https://xiang-xx.github.io/tags/ai/</link><description>Recent content in AI on XX Blog</description><generator>Hugo -- gohugo.io</generator><language>zh-CN</language><lastBuildDate>Tue, 28 Mar 2023 10:08:48 +0800</lastBuildDate><atom:link href="https://xiang-xx.github.io/tags/ai/index.xml" rel="self" type="application/rss+xml"/><item><title>使用 OpenAI 协作完成项目，好用到离不开</title><link>https://xiang-xx.github.io/posts/coding-with-openai/</link><pubDate>Tue, 28 Mar 2023 10:08:48 +0800</pubDate><guid>https://xiang-xx.github.io/posts/coding-with-openai/</guid><description>需求案例 最近有个需求，使用 ChatGPT 的 Embedding 技术实现自定义 AI 助手。
+总体功能：用户上传 pdf 或者其他知识库，程序把用户上传的知识库调用 ChatGPT 的 Embedding api 进行向量化并存储到向量数据库。用户跟自己创建的 AI 助手对话时，根据用户的问题匹配向量数据库的内容，把匹配到的内容作为上下文知识，调用 ChatGPT 的 Completions api 完成对话补全。
+总体功能类似此项目：gpt4-pdf-chatbot-langchain
+背景信息 ChatGPT 版本：ChatGPT-4
+此项目要求使用 python 开发，基本的技术栈为：
+web 框架：fastapi 核心库：langchain python 虚拟环境包管理工具：poetry 向量存储库：chromadb/redisvector/pinecone 我对 python 不太熟，几年前自己接触过一点，写了一些 demo。那时候连 virtual env 都很少用。所以为了快速上手，很多知识点都需要问 ChatGPT。
+协作开发过程 在选择向量存储工具时，我让 ChatGPT 对三种备选方案进行对比，分析其优劣势。ChatGPT 给了比较准确的回复，它还给出了一个简短的总结：
+总之，选择哪种技术取决于你的具体需求和应用场景。如果你需要一个简单的、轻量级的解决方案，Redis 可能足够了。然而，对于大规模的矢量搜索和相似度查询，Pinecone 可能是一个更好的选择。Chroma 可能适合某些特定需求，但可能需要更多的开发工作。
+在使用 pinecone 时，对 index 的两个参数 dimensions 和 metrics 的作用不太清楚，也不知道如何设置。通过咨询 ChatGPT，能很快地得到答案（这里截取部分内容）：
+Dimensions 指的是矢量的维度。在创建 Pinecone 索引时，需要指定矢量的维度。这个维度需要与您的矢量数据集的实际维度保持一致。矢量维度的选择取决于特征提取和表示方法。对于某些场景，较低的维度可能足以捕捉到数据的重要特征；而对于其他场景，较高的维度可能有助于提高搜索准确性。在实际应用中，可以通过实验和评估来确定合适的矢量维度。
+Metrics 是用于度量矢量之间相似度的方法。Pinecone 支持多种相似度度量，如欧几里得距离（euclidean）、余弦相似度（cosine）和内积（dot-product）等。相似度度量的选择取决于您的应用场景和数据类型。例如，在处理文本数据时，余弦相似度通常是一个不错的选择；而在处理图像或其他连续数据时，欧几里得距离可能更合适。在实际应用中，可以通过实验和评估来确定合适的相似度度量。</description></item></channel></rss>
