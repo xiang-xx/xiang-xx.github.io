@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>code on XX Blog</title><link>https://xiang-xx.github.io/tags/code/</link><description>Recent content in code on XX Blog</description><generator>Hugo -- gohugo.io</generator><language>zh-CN</language><lastBuildDate>Mon, 22 May 2023 20:19:19 +0800</lastBuildDate><atom:link href="https://xiang-xx.github.io/tags/code/index.xml" rel="self" type="application/rss+xml"/><item><title>术语命名混乱问题及解决方案</title><link>https://xiang-xx.github.io/posts/name-confusion-lead-to-bugs/</link><pubDate>Mon, 22 May 2023 20:19:19 +0800</pubDate><guid>https://xiang-xx.github.io/posts/name-confusion-lead-to-bugs/</guid><description>前言 在日常开发中，当你看到代码里的 userId 变量时，你无需检查代码的上下文，就猜到它代表的是 user 表的主键 id。但有时候出于各种原因，导致变量实际代表的意义并非我们所想的那样，如果我们按照自己认为的那样进行编码，则可能造成严重问题。
+我遇到的典型案例 1. 某教育公司的 teacher 表里有三个数字字段分别是：id，teacher_id，teacher_uid；其中，id 是自增主键，teacher_id 是发号器生成的全局唯一 id；teacher_uid 是绑定的用户 id。
+当代码里、或其他表字段里出现一个 teacher_id 时，如果不查看上下文，你很难知道它代表的是 teacher 表的哪个字段。曾经就有一位研发在建表时使用 teacher_id 代表了 teacher_uid，导致某些功能查询 teacher 信息失败。
+在设计表时，如果决定使用递增全局唯一 id 时，就没必要再保留主键自增了，把从发号器拿到的全局唯一 id 作为主键存储即可，这样就避免了 teacher_id 的语义问题。再规范使用 teacher_id 与 teacher_uid，则可以避免此类字段引起问题。
+2. 某电子商务公司的支付系统的各个服务中，customer_id 经常用来表示企业用户 id，企业信息、账单、合规认证等各个系统表里及代码里都是用 customer_id 表示企业用户 id。
+后来在开发一个数据统计功能时，某新人研发要根据订单概要表统计企业销售数据，代码逻辑是根据此表的 customer_id 进行聚合查询等操作。临上线时发现聚合得到的数据跟其他系统的数据对不上，后来调查发现此处的 customer_id 是消费者用户 id，并非企业 id。
+同一系统中，同一个单词只能代表一种主体，必须确保术语的语义唯一。
+3. 某互联网公司的系统中有如下三张表： swap_result(id, ...)， swap_record(id, ..., swap_result_id)，swap_extrinsic(id, ..., swap_result_id)。
+后面两张表里都有相同数据类型的 swap_result_id。使用其中的 swap_result_id 去 swap_result 表中按主键查询，什么也查不到，就算有能查到的数据，但各种场景都对不上。后来翻代码才发现，swap_record.swap_result_id 是 swap_extrinsic.id，而 swap_extrinsic.</description></item></channel></rss>
